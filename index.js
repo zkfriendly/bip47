@@ -39,28 +39,36 @@ function bufferToHexString(buffer) {
 function getAddress(node, network) {
     return bitcoin.payments.p2pkh({ pubkey: node.publicKey, network }).address;
 }
+let network_data_testnet = {
+    'network': bitcoin.networks.testnet,
+    'sign': 0x02,
+    'coin': "1"
+};
+let network_data_mainnet = {
+    'network': bitcoin.networks.bitcoin,
+    'sign': 0x03,
+    'coin': "0"
+};
+// choose network
+let network = network_data_testnet;
 // You must wrap a tiny-secp256k1 compatible implementation
 const bip32 = (0, bip32_1.default)(ecc);
-let sampleSeed = "submit enough hand diagram close local rhythm goose path fade almost quick";
-let seed = bip39.mnemonicToSeedSync(sampleSeed);
-let node = bip32.fromSeed(seed);
-let paymentCodeNode = node.derivePath("m/47'/0'/0'");
+let bip39Seed = "submit enough hand diagram close local rhythm goose path fade almost quick";
+// seed from bip39 seed phrase
+let seed = bip39.mnemonicToSeedSync(bip39Seed);
+let node = bip32.fromSeed(seed, network.network);
+// payment code node from master node
+let paymentCodeNode = node.derivePath(`m/47'/${network.coin}'/0'`);
+// notification node from payment code node
 let BIP47NotificationNode = paymentCodeNode.derive(0);
-console.log(getAddress(BIP47NotificationNode));
+console.log(getAddress(BIP47NotificationNode, bitcoin.networks.testnet));
 // payment code serialize
 let paymentCodeSerializedBuffer = Buffer.alloc(81);
 paymentCodeSerializedBuffer[0] = 71;
 paymentCodeSerializedBuffer[1] = 0x01; // version
 paymentCodeSerializedBuffer[2] = 0x00; // must be zero
-paymentCodeSerializedBuffer[3] = 0x03; // sign 2 or 3
+paymentCodeSerializedBuffer[3] = network.sign; // sign 2 or 3
 paymentCodeSerializedBuffer.fill(paymentCodeNode.publicKey.slice(1), 4, 36); // pubkey
 paymentCodeSerializedBuffer.fill(paymentCodeNode.chainCode, 36, 68); // chain code
 const payment = bs58check_ts_1.default.encode(paymentCodeSerializedBuffer);
-const actual = "PM8TJZ1Bzg526N1i3QLYvoohMfdrax9kRZiyncDmN4ZAMTdeenX3ETa2WHMDpEGtzq7eKaiWC4DHsQYR6fsiFYBPNhCDWmMKZpqkfQgnJPVvLRBpgYn9";
 console.log(payment);
-console.log(actual);
-console.log(payment == actual);
-// extended private and public key are required
-// Each extended key has 2^31 normal child keys, and 2^31 hardened child keys. 
-// Each of these child keys has an index. The normal child keys use indices 0 through 2^(31)-1. 
-// The hardened child keys use indices 2^31 through 2^(32)-1
