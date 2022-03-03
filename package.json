@@ -1,0 +1,16 @@
+{
+  "name": "btc_wallet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bip32": "^3.0.1",
+    "bip39": "^3.0.4"
+  }
+}
