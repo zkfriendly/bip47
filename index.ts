@@ -29,7 +29,7 @@ let network_data_mainnet = {
 }
 
 // choose network
-let network = network_data_testnet;
+let network = network_data_mainnet;
 
 // You must wrap a tiny-secp256k1 compatible implementation
 const bip32 = BIP32Factory(ecc);
@@ -46,7 +46,7 @@ let paymentCodeNode: BIP32Interface = node.derivePath(`m/47'/${network.coin}'/0'
 
 // notification node from payment code node
 let BIP47NotificationNode: BIP32Interface = paymentCodeNode.derive(0);
-console.log(getAddress(BIP47NotificationNode, bitcoin.networks.testnet))
+console.log(getAddress(BIP47NotificationNode, network.network))
 
 // payment code serialize
 let paymentCodeSerializedBuffer: Buffer = Buffer.alloc(81);

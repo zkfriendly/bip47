@@ -50,7 +50,7 @@ let network_data_mainnet = {
     'coin': "0"
 };
 // choose network
-let network = network_data_testnet;
+let network = network_data_mainnet;
 // You must wrap a tiny-secp256k1 compatible implementation
 const bip32 = (0, bip32_1.default)(ecc);
 let bip39Seed = "submit enough hand diagram close local rhythm goose path fade almost quick";
@@ -61,7 +61,7 @@ let node = bip32.fromSeed(seed, network.network);
 let paymentCodeNode = node.derivePath(`m/47'/${network.coin}'/0'`);
 // notification node from payment code node
 let BIP47NotificationNode = paymentCodeNode.derive(0);
-console.log(getAddress(BIP47NotificationNode, bitcoin.networks.testnet));
+console.log(getAddress(BIP47NotificationNode, network.network));
 // payment code serialize
 let paymentCodeSerializedBuffer = Buffer.alloc(81);
 paymentCodeSerializedBuffer[0] = 71;
