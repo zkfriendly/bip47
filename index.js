@@ -31,12 +31,24 @@ const bip32_1 = __importDefault(require("bip32"));
 const ecc = __importStar(require("tiny-secp256k1"));
 const bitcoin = __importStar(require("bitcoinjs-lib"));
 const bs58check_ts_1 = __importDefault(require("bs58check-ts"));
+const crypto = __importStar(require("crypto"));
+const xor_1 = require("./xor");
 class BIP47 {
-    constructor(bip39Seed, network, password) {
-        this.network = network;
-        this.masterPaymentCodeNode = BIP47.getMasterPaymentCodeNodeFromBIP39Seed(bip39Seed, this.network, password);
+    static fromPaymentCode(paymentCode, network = network_data_mainnet) {
+        let bip47 = new BIP47();
+        bip47.network = network;
+        bip47.masterPaymentCodeNode = BIP47.getPublicPaymentCodeNodeFromBase58(paymentCode, network);
+        return bip47;
+    }
+    static fromBIP39Seed(bip39Seed, network = network_data_mainnet, password) {
+        let bip47 = new BIP47();
+        bip47.network = network;
+        bip47.masterPaymentCodeNode = BIP47.getMasterPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password);
+        return bip47;
     }
     getWalletNodeForPaymentCodeAtIndex(bobMasterPublicPaymentCodeNode, index) {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
         const alicePrivateNode = this.masterPaymentCodeNode.derive(index);
         const zerothBobPaymentNode = bobMasterPublicPaymentCodeNode.derive(0);
         const s = BIP47.getSharedSecret(zerothBobPaymentNode.publicKey, alicePrivateNode.privateKey);
@@ -49,6 +61,8 @@ class BIP47 {
         return BIP47.bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, this.network.network);
     }
     getPaymentAddressForPaymentCodeNodeAtIndex(bobMasterPublicPaymentCodeNode, index) {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
         const zerothAlicePaymentCodeNode = this.masterPaymentCodeNode.derive(0);
         const currentBobPublicPaymentCodeNode = bobMasterPublicPaymentCodeNode.derive(index);
         const a = zerothAlicePaymentCodeNode.privateKey;
@@ -70,20 +84,28 @@ class BIP47 {
         return bitcoin.crypto.sha256(S);
     }
     getSerializedPaymentCode() {
+        return bs58check_ts_1.default.encode(Buffer.concat([Buffer.from([71]), this.getBinaryPaymentCode()]));
+    }
+    getBinaryPaymentCode() {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
         let node = this.masterPaymentCodeNode;
-        let paymentCodeSerializedBuffer = Buffer.alloc(81);
-        paymentCodeSerializedBuffer[0] = 71;
-        paymentCodeSerializedBuffer[1] = 0x01; // version
-        paymentCodeSerializedBuffer[2] = 0x00; // must be zero
-        paymentCodeSerializedBuffer[3] = node.publicKey[0]; // sign 2 or 3
-        paymentCodeSerializedBuffer.fill(node.publicKey.slice(1), 4, 36); // pubkey
-        paymentCodeSerializedBuffer.fill(node.chainCode, 36, 68); // chain code
-        return bs58check_ts_1.default.encode(paymentCodeSerializedBuffer);
+        let paymentCodeSerializedBuffer = Buffer.alloc(80);
+        paymentCodeSerializedBuffer[0] = 0x01; // version
+        paymentCodeSerializedBuffer[1] = 0x00; // must be zero
+        paymentCodeSerializedBuffer[2] = node.publicKey[0]; // sign 2 or 3
+        paymentCodeSerializedBuffer.fill(node.publicKey.slice(1), 3, 35); // pubkey
+        paymentCodeSerializedBuffer.fill(node.chainCode, 35, 67); // chain code
+        return paymentCodeSerializedBuffer;
     }
     getNotificationNode() {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
         return this.masterPaymentCodeNode.derive(0);
     }
     getNotificationNodeFromPaymentCode(paymentCode) {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
         return BIP47.getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
     }
     getNotificationAddressFromPaymentCode(paymentCode) {
@@ -106,8 +128,31 @@ class BIP47 {
             return [...buffer].map((b) => Number(b).toString(16)).join('');
         return "";
     }
-    getAddressFromNode(node) {
-        return bitcoin.payments.p2pkh({ pubkey: node.publicKey, network: this.network.network }).address;
+    getAddressFromNode(node, network = this.network) {
+        return bitcoin.payments.p2pkh({ pubkey: node.publicKey, network: network === null || network === void 0 ? void 0 : network.network }).address;
+    }
+    uintArrayToBuffer(array) {
+        const b = Buffer.alloc(array.length);
+        for (let i = 0; i < array.length; i++)
+            b[i] = array[i];
+        return b;
+    }
+    getNotificationOut(bobBIP47) {
+        if (!this.network || !this.masterPaymentCodeNode)
+            throw "Master Payment code or network not set";
+        let bip = BIP47.bip32.fromPrivateKey(Buffer.from('1b7a10f45118e2519a8dd46ef81591c1ae501d082b6610fdda3de7a3c932880d', 'hex'), this.masterPaymentCodeNode.chainCode);
+        const a = bip.privateKey;
+        const B = bobBIP47.getNotificationNode().publicKey;
+        const S = this.uintArrayToBuffer(ecc.pointMultiply(B, a));
+        const x = this.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+        const o = Buffer.from('86f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c01000000', 'hex');
+        let _hmac = crypto.createHmac('sha512', o);
+        let s = _hmac.update(x).digest();
+        let binaryPaymentCode = this.getBinaryPaymentCode();
+        binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
+        binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);
+        console.log(binaryPaymentCode.toString('hex'));
+        console.log("010002063e4eb95e62791b06c50e1a3a942e1ecaaa9afbbeb324d16ae6821e091611fa96c0cf048f607fe51a0327f5e2528979311c78cb2de0d682c61e1180fc3d543b00000000000000000000000000");
     }
 }
 BIP47.G = Buffer.from("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 'hex');
@@ -120,8 +165,11 @@ let network_data_mainnet = {
     'network': bitcoin.networks.bitcoin,
     'coin': "0"
 };
-let bip39Seed = "submit enough hand diagram close local rhythm goose path fade almost quick";
-let bip47wallet = new BIP47(bip39Seed, network_data_testnet);
-let bobNode = BIP47.getPublicPaymentCodeNodeFromBase58("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf", network_data_testnet);
-console.log("My Notification Address ", bip47wallet.getNotificationAddress());
-console.log(bip47wallet.getPaymentAddressForPaymentCodeNodeAtIndex(bobNode, 0));
+let bip39Seed = "response seminar brave tip suit recall often sound stick owner lottery motion";
+let aliceBIP47 = BIP47.fromBIP39Seed(bip39Seed);
+let bobBIP47 = BIP47.fromPaymentCode("PM8TJS2JxQ5ztXUpBBRnpTbcUXbUHy2T1abfrb3KkAAtMEGNbey4oumH7Hc578WgQJhPjBxteQ5GHHToTYHE3A1w6p7tU6KSoFmWBVbFGjKPisZDbP97");
+console.assert(aliceBIP47.getSerializedPaymentCode() == "PM8TJTLJbPRGxSbc8EJi42Wrr6QbNSaSSVJ5Y3E4pbCYiTHUskHg13935Ubb7q8tx9GVbh2UuRnBc3WSyJHhUrw8KhprKnn9eDznYGieTzFcwQRya4GA", "Payment Code Failed");
+console.assert(aliceBIP47.getNotificationAddress() == "1JDdmqFLhpzcUwPeinhJbUPw4Co3aWLyzW", "Notification address mismatch");
+console.assert(bobBIP47.getNotificationAddress() == "1ChvUUvht2hUQufHBXF8NgLhW8SwE2ecGV", "Bob notif address mismatch");
+console.assert(bobBIP47.getNotificationNode().publicKey.toString('hex') == "024ce8e3b04ea205ff49f529950616c3db615b1e37753858cc60c1ce64d17e2ad8", "Bob notif pubkey mismatch");
+aliceBIP47.getNotificationOut(bobBIP47);
