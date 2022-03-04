@@ -69,16 +69,19 @@ paymentCodeSerializedBuffer[3] = paymentCodeNode.publicKey[0]; // sign 2 or 3
 paymentCodeSerializedBuffer.fill(paymentCodeNode.publicKey.slice(1), 4, 36); // pubkey
 paymentCodeSerializedBuffer.fill(paymentCodeNode.chainCode, 36, 68); // chain code
 const paymentCodeSerialized = bs58check_ts_1.default.encode(paymentCodeSerializedBuffer);
-function getAliceToBobPaymentAddressAt(aliceMasterPrivatePaymentCodeNode, bobMasterPublicPaymentCodeNode, index) {
-    const zerothAlicePaymentCodeNode = aliceMasterPrivatePaymentCodeNode.derive(0);
-    const currentBobPublicPaymentCodeNode = bobMasterPublicPaymentCodeNode.derive(index);
-    const a = zerothAlicePaymentCodeNode.privateKey;
-    const B = currentBobPublicPaymentCodeNode.publicKey;
+function getSharedSecret(B, a) {
     const SUint = ecc.xOnlyPointFromPoint(ecc.pointMultiply(B, a, true));
     const S = Buffer.alloc(32);
     for (let i = 0; i < S.length; i++)
         S[i] = SUint[i]; // uint8Array to Buffer
-    const s = bitcoin.crypto.sha256(S);
+    return bitcoin.crypto.sha256(S);
+}
+function getAliceToBobPaymentAddress(aliceMasterPrivatePaymentCodeNode, bobMasterPublicPaymentCodeNode, index) {
+    const zerothAlicePaymentCodeNode = aliceMasterPrivatePaymentCodeNode.derive(0);
+    const currentBobPublicPaymentCodeNode = bobMasterPublicPaymentCodeNode.derive(index);
+    const a = zerothAlicePaymentCodeNode.privateKey;
+    const B = currentBobPublicPaymentCodeNode.publicKey;
+    const s = getSharedSecret(B, a);
     const sG = ecc.pointMultiply(G, s, true);
     const BPrime = ecc.pointAdd(B, sG, true);
     const BPrimeBuffer = Buffer.alloc(33);
@@ -86,18 +89,27 @@ function getAliceToBobPaymentAddressAt(aliceMasterPrivatePaymentCodeNode, bobMas
         BPrimeBuffer[i] = BPrime[i];
     return BPrimeBuffer;
 }
-// function getReceiveAddressAtIndex(index: number): Buffer {
-//     const bobPaymentCodeBuffer: Buffer = base58check.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
-//     const bobPaymentCodeNode: BIP32Interface = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
-//
-//     const bob0PublicNode: BIP32Interface = bobPaymentCodeNode.derive(0);
-//     const alicePrivateNode: BIP32Interface = paymentCodeNode.derive(index);
-//
-// }
-// generate sending addresses
-for (let index = 0; index < 10; index++) {
-    const bobPaymentCodeBuffer = bs58check_ts_1.default.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
-    const bobPublicKeyNode = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
-    let BPrimeBuffer = getAliceToBobPaymentAddressAt(paymentCodeNode, bobPublicKeyNode, index);
-    console.log(bitcoin.payments.p2pkh({ pubkey: BPrimeBuffer, network: network.network }).address);
+function getBobToAliceWalletNode(aliceMasterPrivatePaymentCodeNode, bobMasterPublicPaymentCodeNode, index) {
+    const alicePrivateNode = aliceMasterPrivatePaymentCodeNode.derive(index);
+    const zerothBobPaymentNode = bobMasterPublicPaymentCodeNode.derive(0);
+    const s = getSharedSecret(zerothBobPaymentNode.publicKey, alicePrivateNode.privateKey);
+    if (!ecc.isPrivate(s))
+        throw new TypeError('Invalid shared secret');
+    const prvKeyUint = ecc.privateAdd(alicePrivateNode.privateKey, s);
+    const prvKey = Buffer.alloc(32);
+    for (let i = 0; i < prvKey.length; i++)
+        prvKey[i] = prvKeyUint[i];
+    return bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, network.network);
 }
+// generate sending addresses
+// for (let index = 0; index < 10; index ++) {
+//     const bobPaymentCodeBuffer: Buffer = base58check.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf")
+//     const bobPublicKeyNode: BIP32Interface = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68))
+// //
+//     let BPrimeBuffer: Buffer = getAliceToBobPaymentAddress(paymentCodeNode, bobPublicKeyNode, index);
+//     console.log(bitcoin.payments.p2pkh({pubkey: BPrimeBuffer, network: network.network}).address);
+// }
+const bobPaymentCodeBuffer = bs58check_ts_1.default.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
+const bobPublicKeyNode = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
+console.log(getAddress(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1), network.network));
+console.log(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1).toWIF());
