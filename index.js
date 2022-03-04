@@ -101,15 +101,15 @@ function getBobToAliceWalletNode(aliceMasterPrivatePaymentCodeNode, bobMasterPub
         prvKey[i] = prvKeyUint[i];
     return bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, network.network);
 }
-// generate sending addresses
-// for (let index = 0; index < 10; index ++) {
-//     const bobPaymentCodeBuffer: Buffer = base58check.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf")
-//     const bobPublicKeyNode: BIP32Interface = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68))
-// //
-//     let BPrimeBuffer: Buffer = getAliceToBobPaymentAddress(paymentCodeNode, bobPublicKeyNode, index);
-//     console.log(bitcoin.payments.p2pkh({pubkey: BPrimeBuffer, network: network.network}).address);
-// }
-const bobPaymentCodeBuffer = bs58check_ts_1.default.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
-const bobPublicKeyNode = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
-console.log(getAddress(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1), network.network));
-console.log(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1).toWIF());
+{
+    const bobPaymentCodeBuffer = bs58check_ts_1.default.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
+    const bobPublicKeyNode = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
+    let BPrimeBuffer = getAliceToBobPaymentAddress(paymentCodeNode, bobPublicKeyNode, 0);
+    console.log(bitcoin.payments.p2pkh({ pubkey: BPrimeBuffer, network: network.network }).address);
+}
+{
+    const bobPaymentCodeBuffer = bs58check_ts_1.default.decode("PM8TJaz19chXNgWBbuFyFJQqjTAMpAffgGkAXZZsSCkxVCSBJtqju3v26BSU98WkmhurgoBTyJfhckPzBGnjaXoCkjzg7u6gaAq8nbDUTbhFnuYNMLhf");
+    const bobPublicKeyNode = bip32.fromPublicKey(bobPaymentCodeBuffer.slice(3, 36), bobPaymentCodeBuffer.slice(36, 68));
+    console.log(getAddress(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1), network.network));
+    console.log(getBobToAliceWalletNode(paymentCodeNode, bobPublicKeyNode, 1).toWIF());
+}
