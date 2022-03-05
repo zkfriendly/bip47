@@ -48,16 +48,11 @@ class BIP47 {
     }
     getWalletNodeForPaymentCodeAtIndex(bobMasterPublicPaymentCodeNode, index) {
         if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
+            throw Error("Master Payment code or network not set");
         const alicePrivateNode = this.masterPaymentCodeNode.derive(index);
         const zerothBobPaymentNode = bobMasterPublicPaymentCodeNode.derive(0);
         const s = BIP47.getSharedSecret(zerothBobPaymentNode.publicKey, alicePrivateNode.privateKey);
-        if (!ecc.isPrivate(s))
-            throw new TypeError('Invalid shared secret');
-        const prvKeyUint = ecc.privateAdd(alicePrivateNode.privateKey, s);
-        const prvKey = Buffer.alloc(32);
-        for (let i = 0; i < prvKey.length; i++)
-            prvKey[i] = prvKeyUint[i];
+        const prvKey = BIP47.uintArrayToBuffer(ecc.privateAdd(alicePrivateNode.privateKey, s));
         return BIP47.bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, this.network.network);
     }
     getPaymentAddressForPaymentCodeNodeAtIndex(bobMasterPublicPaymentCodeNode, index) {
@@ -69,11 +64,8 @@ class BIP47 {
         const B = currentBobPublicPaymentCodeNode.publicKey;
         const s = BIP47.getSharedSecret(B, a);
         const sG = ecc.pointMultiply(BIP47.G, s, true);
-        const BPrime = ecc.pointAdd(B, sG, true);
-        const BPrimeBuffer = Buffer.alloc(33);
-        for (let i = 0; i < BPrimeBuffer.length; i++)
-            BPrimeBuffer[i] = BPrime[i];
-        let node = BIP47.bip32.fromPublicKey(BPrimeBuffer, currentBobPublicPaymentCodeNode.chainCode, this.network.network);
+        const BPrime = BIP47.uintArrayToBuffer(ecc.pointAdd(B, sG, true));
+        let node = BIP47.bip32.fromPublicKey(BPrime, currentBobPublicPaymentCodeNode.chainCode, this.network.network);
         return this.getAddressFromNode(node);
     }
     static getSharedSecret(B, a) {
@@ -88,7 +80,7 @@ class BIP47 {
     }
     getBinaryPaymentCode() {
         if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
+            throw Error("Master Payment code or network not set");
         let node = this.masterPaymentCodeNode;
         let paymentCodeSerializedBuffer = Buffer.alloc(80);
         paymentCodeSerializedBuffer[0] = 0x01; // version
@@ -100,12 +92,12 @@ class BIP47 {
     }
     getNotificationNode() {
         if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
+            throw Error("Master Payment code or network not set");
         return this.masterPaymentCodeNode.derive(0);
     }
     getNotificationNodeFromPaymentCode(paymentCode) {
         if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
+            throw Error("Master Payment code or network not set");
         return BIP47.getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
     }
     getNotificationAddressFromPaymentCode(paymentCode) {
@@ -137,15 +129,14 @@ class BIP47 {
             b[i] = array[i];
         return b;
     }
-    getNotificationOut(bobBIP47) {
+    getBlindedPaymentCode(bobBIP47, privateKey, outpoint) {
         if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
-        let bip = BIP47.bip32.fromPrivateKey(Buffer.from('1b7a10f45118e2519a8dd46ef81591c1ae501d082b6610fdda3de7a3c932880d', 'hex'), this.masterPaymentCodeNode.chainCode);
-        const a = bip.privateKey;
+            throw Error("Master Payment code or network not set");
+        const a = privateKey;
         const B = bobBIP47.getNotificationNode().publicKey;
         const S = BIP47.uintArrayToBuffer(ecc.pointMultiply(B, a));
         const x = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
-        const o = Buffer.from('86f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c01000000', 'hex');
+        const o = outpoint;
         let _hmac = crypto.createHmac('sha512', o);
         let s = _hmac.update(x).digest();
         let binaryPaymentCode = this.getBinaryPaymentCode();
@@ -165,7 +156,7 @@ class BIP47 {
         else if (bitcoin.script.toASM(first.script).split(' ').length == 2)
             pubKey = Buffer.from(bitcoin.script.toASM(first.script).split(' ')[1], 'hex');
         else
-            throw "Unknown Transaction type";
+            throw Error("Unknown Transaction type");
         return {
             'outpoint': outpoint,
             'pubKey': pubKey
@@ -182,7 +173,7 @@ class BIP47 {
         let s = _hmac.update(x).digest();
         let opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
         if (!opReturnOutput)
-            throw "No OP_RETURN output in notification";
+            throw Error("No OP_RETURN output in notification");
         let binaryPaymentCode = opReturnOutput.script.slice(3);
         binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
         binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);
@@ -206,7 +197,6 @@ console.assert(aliceBIP47.getSerializedPaymentCode() == "PM8TJTLJbPRGxSbc8EJi42W
 console.assert(aliceBIP47.getNotificationAddress() == "1JDdmqFLhpzcUwPeinhJbUPw4Co3aWLyzW", "Notification address mismatch");
 console.assert(bobBIP47.getNotificationAddress() == "1ChvUUvht2hUQufHBXF8NgLhW8SwE2ecGV", "Bob notif address mismatch");
 console.assert(bobBIP47.getNotificationNode().publicKey.toString('hex') == "024ce8e3b04ea205ff49f529950616c3db615b1e37753858cc60c1ce64d17e2ad8", "Bob notif pubkey mismatch");
-aliceBIP47.getNotificationOut(bobBIP47);
 let t = BIP47.fromBIP39Seed("sure plug leisure member give dress grain music embody able isolate curious", network_data_testnet);
 let rawP2PKHNotification = "0200000001544fa314c2d62077ae08b73f67cfe3b1bbffb5d58c816e35b932d2836d6a3bd6000000006a47304402202ee0f1e056d212f6a162661fd69ca62508b9c1c3f8d39f2c072ffe9cb39ab20e0220618db06b730d708440530dd076cda511c6619e85c7477ad42ebd3b51a2a25cc6012103b93ea930391aab97f03490cfa7a52d219430a02792e2abc66fead006a6de049cffffffff040000000000000000536a4c500100038b526ece105975c73d6d7787e5d5cf25a7f79bdd6e13b4faf2e9d157b03b67de8db542a92e035670c01f2934cae01d95541eba1c5bb3ed81db3c9e89439daa810000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600144411eaf4b9ce4367e1fa29c6c42f259eff94e43956480100000000001600144b47d20f600b0510bd4f62f6d4a80eb732d3f8cb00000000";
 let rawP2WPKHNotification = "02000000000101e4cecfc286136cabb8c4a03baba7f549a20c748f065417da52722995c6e442d00000000000ffffffff040000000000000000536a4c50010003dbcc9c4d0932c85a86856fad2b45c190b40f1b265f8959544d08bd827b817cbf1db2c5c779fb9d2ad0c4796c001a95d1d7358713acdbbfd1826df8578a16ec900000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600145761016026197c054f46e4a5f10e8fe923349e94f73d030000000000160014edc72cff2800d3c2a605cdcf0b45bb766e519bfb0247304402205d548a0042ac87a7a0102f46dc9491641cb34b22e9ef02020242972580dae56d022043ee0114beec3203ff2b303813d8e8174d3c69ecfdc6d093c54a186a84e90222012102d659fda36c83fb7fe09f4151ccd0e48531dfd26d998aeda3e6132c318db3006900000000";
