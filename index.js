@@ -131,7 +131,7 @@ class BIP47 {
     getAddressFromNode(node, network = this.network) {
         return bitcoin.payments.p2pkh({ pubkey: node.publicKey, network: network === null || network === void 0 ? void 0 : network.network }).address;
     }
-    uintArrayToBuffer(array) {
+    static uintArrayToBuffer(array) {
         const b = Buffer.alloc(array.length);
         for (let i = 0; i < array.length; i++)
             b[i] = array[i];
@@ -143,16 +143,46 @@ class BIP47 {
         let bip = BIP47.bip32.fromPrivateKey(Buffer.from('1b7a10f45118e2519a8dd46ef81591c1ae501d082b6610fdda3de7a3c932880d', 'hex'), this.masterPaymentCodeNode.chainCode);
         const a = bip.privateKey;
         const B = bobBIP47.getNotificationNode().publicKey;
-        const S = this.uintArrayToBuffer(ecc.pointMultiply(B, a));
-        const x = this.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+        const S = BIP47.uintArrayToBuffer(ecc.pointMultiply(B, a));
+        const x = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
         const o = Buffer.from('86f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c01000000', 'hex');
         let _hmac = crypto.createHmac('sha512', o);
         let s = _hmac.update(x).digest();
         let binaryPaymentCode = this.getBinaryPaymentCode();
         binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
         binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);
-        console.log(binaryPaymentCode.toString('hex'));
-        console.log("010002063e4eb95e62791b06c50e1a3a942e1ecaaa9afbbeb324d16ae6821e091611fa96c0cf048f607fe51a0327f5e2528979311c78cb2de0d682c61e1180fc3d543b00000000000000000000000000");
+        return binaryPaymentCode.toString('hex');
+    }
+    parseNotificationIn(notfData) {
+        // look for signature script, or in the redeem script or pubkey script
+        let tx = bitcoin.Transaction.fromHex(notfData);
+        let txid = tx.getId();
+        let inputs = tx.ins;
+        if (inputs[0].witness.length != 0) {
+            let input = inputs[0];
+            // retrieve pub key from witness
+            let A = inputs[0].witness[1];
+            let b = this.getNotificationNode().privateKey;
+            let S = BIP47.uintArrayToBuffer(ecc.pointMultiply(A, b));
+            let outpoint = Buffer.alloc(36);
+            outpoint[35] = 0x00;
+            outpoint[34] = 0x00;
+            outpoint[33] = 0x00;
+            outpoint[32] = 0x00;
+            for (let i = 0; i < 32; i++)
+                outpoint[i] = input.hash[i];
+            let x = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+            let _hmac = crypto.createHmac('sha512', outpoint);
+            let s = _hmac.update(x).digest();
+            let outputs = tx.outs;
+            let binaryPaymentCode = outputs[0].script.slice(3);
+            binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
+            binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);
+            console.log(bs58check_ts_1.default.encode(Buffer.concat([Buffer.from([71]), binaryPaymentCode])));
+        }
+        else {
+            // retrieve pub key from script
+        }
     }
 }
 BIP47.G = Buffer.from("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 'hex');
@@ -173,3 +203,8 @@ console.assert(aliceBIP47.getNotificationAddress() == "1JDdmqFLhpzcUwPeinhJbUPw4
 console.assert(bobBIP47.getNotificationAddress() == "1ChvUUvht2hUQufHBXF8NgLhW8SwE2ecGV", "Bob notif address mismatch");
 console.assert(bobBIP47.getNotificationNode().publicKey.toString('hex') == "024ce8e3b04ea205ff49f529950616c3db615b1e37753858cc60c1ce64d17e2ad8", "Bob notif pubkey mismatch");
 aliceBIP47.getNotificationOut(bobBIP47);
+let t = BIP47.fromBIP39Seed("sure plug leisure member give dress grain music embody able isolate curious", network_data_testnet);
+// console.log(t.getNotificationNode().toWIF())
+let rawP2PKHNotification = "0200000001544fa314c2d62077ae08b73f67cfe3b1bbffb5d58c816e35b932d2836d6a3bd6000000006a47304402202ee0f1e056d212f6a162661fd69ca62508b9c1c3f8d39f2c072ffe9cb39ab20e0220618db06b730d708440530dd076cda511c6619e85c7477ad42ebd3b51a2a25cc6012103b93ea930391aab97f03490cfa7a52d219430a02792e2abc66fead006a6de049cffffffff040000000000000000536a4c500100038b526ece105975c73d6d7787e5d5cf25a7f79bdd6e13b4faf2e9d157b03b67de8db542a92e035670c01f2934cae01d95541eba1c5bb3ed81db3c9e89439daa810000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600144411eaf4b9ce4367e1fa29c6c42f259eff94e43956480100000000001600144b47d20f600b0510bd4f62f6d4a80eb732d3f8cb00000000";
+let rawP2WPKHNotification = "02000000000101e4cecfc286136cabb8c4a03baba7f549a20c748f065417da52722995c6e442d00000000000ffffffff040000000000000000536a4c50010003dbcc9c4d0932c85a86856fad2b45c190b40f1b265f8959544d08bd827b817cbf1db2c5c779fb9d2ad0c4796c001a95d1d7358713acdbbfd1826df8578a16ec900000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600145761016026197c054f46e4a5f10e8fe923349e94f73d030000000000160014edc72cff2800d3c2a605cdcf0b45bb766e519bfb0247304402205d548a0042ac87a7a0102f46dc9491641cb34b22e9ef02020242972580dae56d022043ee0114beec3203ff2b303813d8e8174d3c69ecfdc6d093c54a186a84e90222012102d659fda36c83fb7fe09f4151ccd0e48531dfd26d998aeda3e6132c318db3006900000000";
+t.parseNotificationIn(rawP2WPKHNotification);

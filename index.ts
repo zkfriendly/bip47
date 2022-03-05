@@ -1,11 +1,12 @@
 import * as bip39 from 'bip39';
-import BIP32Factory, {BIP32API, BIP32Interface} from 'bip32';
+import BIP32Factory, { BIP32API, BIP32Interface } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import * as bitcoin from 'bitcoinjs-lib'
 import base58check from 'bs58check-ts';
-import {Network} from "bitcoinjs-lib";
+import { Network } from "bitcoinjs-lib";
 import * as crypto from 'crypto'
-import {xor} from "./xor";
+import { xor } from "./xor";
+import { Input } from "bitcoinjs-lib/src/transaction";
 
 type NetworkCoin = {
     'network': Network,
@@ -33,7 +34,7 @@ class BIP47 {
         return bip47;
     }
 
-    getWalletNodeForPaymentCodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface,index: number): BIP32Interface {
+    getWalletNodeForPaymentCodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface, index: number): BIP32Interface {
         if (!this.network || !this.masterPaymentCodeNode)
             throw "Master Payment code or network not set";
 
@@ -44,11 +45,11 @@ class BIP47 {
             throw new TypeError('Invalid shared secret');
         const prvKeyUint = ecc.privateAdd(alicePrivateNode.privateKey as Buffer, s) as Buffer;
         const prvKey: Buffer = Buffer.alloc(32);
-        for (let i = 0 ; i < prvKey.length;i++) prvKey[i] = prvKeyUint[i]
+        for (let i = 0; i < prvKey.length; i++) prvKey[i] = prvKeyUint[i]
         return BIP47.bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, this.network.network);
     }
 
-    getPaymentAddressForPaymentCodeNodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface,index: number): string {
+    getPaymentAddressForPaymentCodeNodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface, index: number): string {
         if (!this.network || !this.masterPaymentCodeNode)
             throw "Master Payment code or network not set";
         const zerothAlicePaymentCodeNode: BIP32Interface = this.masterPaymentCodeNode.derive(0)
@@ -62,7 +63,7 @@ class BIP47 {
         const BPrimeBuffer: Buffer = Buffer.alloc(33);
         for (let i = 0; i < BPrimeBuffer.length; i++) BPrimeBuffer[i] = BPrime[i];
 
-        let node:BIP32Interface = BIP47.bip32.fromPublicKey(BPrimeBuffer,
+        let node: BIP32Interface = BIP47.bip32.fromPublicKey(BPrimeBuffer,
             currentBobPublicPaymentCodeNode.chainCode,
             this.network.network);
         return this.getAddressFromNode(node);
@@ -76,7 +77,7 @@ class BIP47 {
     }
 
     getSerializedPaymentCode(): string {
-        return base58check.encode(Buffer.concat([Buffer.from([71]),this.getBinaryPaymentCode()]));
+        return base58check.encode(Buffer.concat([Buffer.from([71]), this.getBinaryPaymentCode()]));
     }
 
     getBinaryPaymentCode(): Buffer {
@@ -129,13 +130,13 @@ class BIP47 {
         return ""
     }
 
-    getAddressFromNode(node: BIP32Interface, network=this.network): string {
+    getAddressFromNode(node: BIP32Interface, network = this.network): string {
         return bitcoin.payments.p2pkh({ pubkey: node.publicKey, network: network?.network }).address!;
     }
 
-    uintArrayToBuffer(array: Uint8Array): Buffer {
+    static uintArrayToBuffer(array: Uint8Array): Buffer {
         const b: Buffer = Buffer.alloc(array.length);
-        for (let i = 0 ; i < array.length ; i++) b[i] = array[i]
+        for (let i = 0; i < array.length; i++) b[i] = array[i]
         return b;
     }
 
@@ -147,9 +148,9 @@ class BIP47 {
 
         const a: Buffer = bip.privateKey as Buffer;
         const B: Buffer = bobBIP47.getNotificationNode().publicKey;
-        const S: Buffer = this.uintArrayToBuffer(ecc.pointMultiply(B, a) as Buffer);
+        const S: Buffer = BIP47.uintArrayToBuffer(ecc.pointMultiply(B, a) as Buffer);
 
-        const x: Buffer = this.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
+        const x: Buffer = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
         const o: Buffer = Buffer.from('86f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c01000000', 'hex')
         let _hmac = crypto.createHmac('sha512', o);
         let s = _hmac.update(x).digest();
@@ -161,6 +162,40 @@ class BIP47 {
         return binaryPaymentCode.toString('hex')
     }
 
+    parseNotificationIn(notifData: string) {
+        // look for signature script, or in the redeem script or pubkey script
+
+        let tx: bitcoin.Transaction = bitcoin.Transaction.fromHex(notifData);
+        let txid: string = tx.getId();
+        let inputs: bitcoin.TxInput[] = tx.ins;
+        if (inputs[0].witness.length != 0) {
+            let input: bitcoin.TxInput = inputs[0];
+
+            // retrieve pub key from witness
+            let A: Buffer = inputs[0].witness[1];
+            let b: Buffer = this.getNotificationNode().privateKey as Buffer
+            let S: Buffer = BIP47.uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
+
+            let outpoint: Buffer = Buffer.alloc(36);
+            outpoint[35] = 0x00; outpoint[34] = 0x00; outpoint[33] = 0x00; outpoint[32] = 0x00;
+            for (let i = 0; i < 32; i++) outpoint[i] = input.hash[i]
+            let x: Buffer = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+            let _hmac = crypto.createHmac('sha512', outpoint);
+            let s: Buffer = _hmac.update(x).digest();
+            let outputs: bitcoin.TxOutput[] = tx.outs;
+
+            let binaryPaymentCode: Buffer = outputs[0].script.slice(3);
+
+            binaryPaymentCode.fill(xor(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35)
+            binaryPaymentCode.fill(xor(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67)
+
+            console.log(base58check.encode(Buffer.concat([Buffer.from([71]), binaryPaymentCode])));
+
+
+        } else {
+            // retrieve pub key from script
+        }
+    }
 }
 
 
@@ -182,3 +217,9 @@ console.assert(bobBIP47.getNotificationAddress() == "1ChvUUvht2hUQufHBXF8NgLhW8S
 console.assert(bobBIP47.getNotificationNode().publicKey.toString('hex') == "024ce8e3b04ea205ff49f529950616c3db615b1e37753858cc60c1ce64d17e2ad8", "Bob notif pubkey mismatch")
 
 aliceBIP47.getNotificationOut(bobBIP47)
+
+let t = BIP47.fromBIP39Seed("sure plug leisure member give dress grain music embody able isolate curious", network_data_testnet)
+// console.log(t.getNotificationNode().toWIF())
+let rawP2PKHNotification = "0200000001544fa314c2d62077ae08b73f67cfe3b1bbffb5d58c816e35b932d2836d6a3bd6000000006a47304402202ee0f1e056d212f6a162661fd69ca62508b9c1c3f8d39f2c072ffe9cb39ab20e0220618db06b730d708440530dd076cda511c6619e85c7477ad42ebd3b51a2a25cc6012103b93ea930391aab97f03490cfa7a52d219430a02792e2abc66fead006a6de049cffffffff040000000000000000536a4c500100038b526ece105975c73d6d7787e5d5cf25a7f79bdd6e13b4faf2e9d157b03b67de8db542a92e035670c01f2934cae01d95541eba1c5bb3ed81db3c9e89439daa810000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600144411eaf4b9ce4367e1fa29c6c42f259eff94e43956480100000000001600144b47d20f600b0510bd4f62f6d4a80eb732d3f8cb00000000"
+let rawP2WPKHNotification = "02000000000101e4cecfc286136cabb8c4a03baba7f549a20c748f065417da52722995c6e442d00000000000ffffffff040000000000000000536a4c50010003dbcc9c4d0932c85a86856fad2b45c190b40f1b265f8959544d08bd827b817cbf1db2c5c779fb9d2ad0c4796c001a95d1d7358713acdbbfd1826df8578a16ec900000000000000000000000000022020000000000001976a91465097af8412ccaa542421643a9a97300a4f91e8f88ac983a0000000000001600145761016026197c054f46e4a5f10e8fe923349e94f73d030000000000160014edc72cff2800d3c2a605cdcf0b45bb766e519bfb0247304402205d548a0042ac87a7a0102f46dc9491641cb34b22e9ef02020242972580dae56d022043ee0114beec3203ff2b303813d8e8174d3c69ecfdc6d093c54a186a84e90222012102d659fda36c83fb7fe09f4151ccd0e48531dfd26d998aeda3e6132c318db3006900000000"
+t.parseNotificationIn(rawP2WPKHNotification)
