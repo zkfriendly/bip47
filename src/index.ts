@@ -3,20 +3,9 @@ import BIP32Factory, { BIP32API, BIP32Interface } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import * as bitcoin from 'bitcoinjs-lib'
 import base58check from 'bs58check-ts';
-import { Network } from "bitcoinjs-lib";
 import * as crypto from 'crypto'
 import { xor } from "./xor";
-
-type NetworkCoin = {
-    'network': Network,
-    'coin': string
-}
-
-interface PubkeyOutpoint {
-    'pubKey': Buffer,
-    'outpoint': Buffer,
-    'privKey'?: Buffer
-}
+import { PubkeyOutpoint, NetworkCoin } from './interfaces'
 
 class BIP47 {
     static G: Buffer = Buffer.from("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 'hex');
