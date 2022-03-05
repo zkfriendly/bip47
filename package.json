@@ -1,13 +1,21 @@
 {
   "name": "bip47",
   "version": "0.0.1",
-  "description": "bip47 utility functions implementation in typescript",
+  "description": "bip47 utility functions",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
   "scripts": {
     "test": "mocha -r ts-node/register tests/**/*.test.ts",
     "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test"
   },
-  "keywords": [],
+  "keywords": [
+    "bip47",
+    "paynyms",
+    "payment-codes"
+  ],
   "author": "Sina Parvizi",
   "license": "MIT",
   "dependencies": {
