@@ -1,14 +1,15 @@
 {
-  "name": "btc_wallet",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "bip47",
+  "version": "0.0.1",
+  "description": "bip47 utility functions implementation in typescript",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -r ts-node/register tests/**/*.test.ts",
+    "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Sina Parvizi",
+  "license": "MIT",
   "dependencies": {
     "bip32": "^3.0.1",
     "bip39": "^3.0.4",
@@ -16,5 +17,14 @@
     "bs58check-ts": "^0.0.7",
     "crypto": "^1.0.1",
     "tiny-secp256k1": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.1.0",
+    "chai": "^4.3.6",
+    "mocha": "^9.2.1",
+    "nyc": "^15.1.0",
+    "ts-node": "^10.6.0",
+    "typescript": "^4.6.2"
   }
 }
