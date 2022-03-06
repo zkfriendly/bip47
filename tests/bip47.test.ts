@@ -112,6 +112,6 @@ describe("Notification Transaction and blinded payment code exchange", () => {
         let bobBip47 = Bip47Util.fromBip39Seed(bob.seedPhrase);
         let p = bobBip47.getPaymentCodeFromRawNotificationTransaction(aliceToBobRawNotificationHex);
 
-        expect(p == alice.paymentCode)
+        expect(p == alice.paymentCode);
     })
 })
