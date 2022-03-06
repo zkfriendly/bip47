@@ -1,1 +1,1 @@
-export { BIP47 } from './bip47'
+export { Bip47Util } from './bip47'

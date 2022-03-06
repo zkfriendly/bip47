@@ -8,52 +8,63 @@ import { xor } from "./xor";
 import { PubkeyOutpoint, NetworkCoin } from './interfaces'
 import { mainnetData } from './networks'
 
-export class BIP47 {
+export class Bip47Util {
     static G: Buffer = Buffer.from("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 'hex');
     static bip32: BIP32API = BIP32Factory(ecc);
 
     network: NetworkCoin | undefined;
-    masterPaymentCodeNode: BIP32Interface | undefined;
+    RootPaymentCodeNode: BIP32Interface | undefined;
 
-    static fromPaymentCode(paymentCode: string, network: NetworkCoin = mainnetData): BIP47 {
-        let bip47 = new BIP47()
+    static fromPaymentCode(paymentCode: string, network: NetworkCoin = mainnetData): Bip47Util {
+        let bip47 = new Bip47Util()
         bip47.network = network;
-        bip47.masterPaymentCodeNode = BIP47.getPublicPaymentCodeNodeFromBase58(paymentCode, network);
+        bip47.RootPaymentCodeNode = Bip47Util.getPublicPaymentCodeNodeFromBase58(paymentCode, network);
         return bip47;
     }
 
-    static fromBIP39Seed(bip39Seed: string, network: NetworkCoin = mainnetData, password?: string): BIP47 {
-        let bip47 = new BIP47()
+    static fromBip39Seed(bip39Seed: string, network: NetworkCoin = mainnetData, password?: string): Bip47Util {
+        let bip47 = new Bip47Util()
         bip47.network = network;
-        bip47.masterPaymentCodeNode = BIP47.getMasterPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password);
+        bip47.RootPaymentCodeNode = Bip47Util.getRootPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password);
         return bip47;
     }
 
-    getWalletNodeForPaymentCodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface, index: number): BIP32Interface {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw Error("Master Payment code or network not set");
-
-        const alicePrivateNode: BIP32Interface = this.masterPaymentCodeNode.derive(index);
-        const zerothBobPaymentNode: BIP32Interface = bobMasterPublicPaymentCodeNode.derive(0);
-        const s = BIP47.getSharedSecret(zerothBobPaymentNode.publicKey, alicePrivateNode.privateKey as Buffer);
-        const prvKey = BIP47.uintArrayToBuffer(ecc.privateAdd(alicePrivateNode.privateKey as Buffer, s) as Buffer);
-        return BIP47.bip32.fromPrivateKey(prvKey, zerothBobPaymentNode.chainCode, this.network.network);
+    static fromSeedHex(seedHex: string | Buffer, network: NetworkCoin = mainnetData): Bip47Util {
+        let bip47 = new Bip47Util()
+        bip47.network = network;
+        bip47.RootPaymentCodeNode = Bip47Util.getRootPaymentCodeNodeFromSeedHex(seedHex, network);
+        return bip47;
     }
 
-    getPaymentAddressForPaymentCodeNodeAtIndex(bobMasterPublicPaymentCodeNode: BIP32Interface, index: number): string {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw "Master Payment code or network not set";
-        const zerothAlicePaymentCodeNode: BIP32Interface = this.masterPaymentCodeNode.derive(0)
-        const currentBobPublicPaymentCodeNode: BIP32Interface = bobMasterPublicPaymentCodeNode.derive(index)
+    getPaymentWallet(bobsRootPaymentCodeNode: BIP32Interface, index: number): BIP32Interface {
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw Error("Root Payment code or network not set");
 
-        const a: Buffer = zerothAlicePaymentCodeNode.privateKey as Buffer
-        const B: Buffer = currentBobPublicPaymentCodeNode.publicKey
-        const s = BIP47.getSharedSecret(B, a);
-        const sG: Buffer = ecc.pointMultiply(BIP47.G, s, true) as Buffer;
-        const BPrime: Buffer = BIP47.uintArrayToBuffer(ecc.pointAdd(B, sG, true) as Buffer);
+        const alicePrivateNode: BIP32Interface = this.RootPaymentCodeNode.derive(index);
+        const bobsFirstPaymentCodeNode: BIP32Interface = bobsRootPaymentCodeNode.derive(0);
+        const s = Bip47Util.getSharedSecret(bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey as Buffer);
+        const prvKey = Bip47Util.uintArrayToBuffer(ecc.privateAdd(alicePrivateNode.privateKey as Buffer, s) as Buffer);
+        return Bip47Util.bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
+    }
 
-        let node: BIP32Interface = BIP47.bip32.fromPublicKey(BPrime,
-            currentBobPublicPaymentCodeNode.chainCode,
+    getPaymentCodeNode(): BIP32Interface {
+        return this.RootPaymentCodeNode as BIP32Interface;
+    }
+
+    getPaymentAddress(bobsRootPaymentCodeNode: BIP32Interface, index: number): string {
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw "Root Payment code or network not set";
+        const firstAlicePaymentCodeNode: BIP32Interface = this.RootPaymentCodeNode.derive(0)
+        const bobPaymentCodeNode: BIP32Interface = bobsRootPaymentCodeNode.derive(index)
+
+        const a: Buffer = firstAlicePaymentCodeNode.privateKey as Buffer
+        const B: Buffer = bobPaymentCodeNode.publicKey
+        const s = Bip47Util.getSharedSecret(B, a);
+        const sG: Buffer = ecc.pointMultiply(Bip47Util.G, s, true) as Buffer;
+        const BPrime: Buffer = Bip47Util.uintArrayToBuffer(ecc.pointAdd(B, sG, true) as Buffer);
+
+        let node: BIP32Interface = Bip47Util.bip32.fromPublicKey(BPrime,
+            bobPaymentCodeNode.chainCode,
             this.network.network);
         return this.getAddressFromNode(node);
     }
@@ -70,9 +81,9 @@ export class BIP47 {
     }
 
     getBinaryPaymentCode(): Buffer {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw Error("Master Payment code or network not set");
-        let node = this.masterPaymentCodeNode;
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw Error("Root Payment code or network not set");
+        let node = this.RootPaymentCodeNode;
         let paymentCodeSerializedBuffer: Buffer = Buffer.alloc(80);
         paymentCodeSerializedBuffer[0] = 0x01; // version
         paymentCodeSerializedBuffer[1] = 0x00; // must be zero
@@ -83,15 +94,15 @@ export class BIP47 {
     }
 
     getNotificationNode(): BIP32Interface {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw Error("Master Payment code or network not set");
-        return this.masterPaymentCodeNode.derive(0);
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw Error("Root Payment code or network not set");
+        return this.RootPaymentCodeNode.derive(0);
     }
 
     getNotificationNodeFromPaymentCode(paymentCode: string): BIP32Interface {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw Error("Master Payment code or network not set");
-        return BIP47.getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw Error("Root Payment code or network not set");
+        return Bip47Util.getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
     }
 
     getNotificationAddressFromPaymentCode(paymentCode: string): string {
@@ -104,12 +115,19 @@ export class BIP47 {
 
     static getPublicPaymentCodeNodeFromBase58(paymentCode: string, network: NetworkCoin): BIP32Interface {
         let rawPaymentCode = base58check.decode(paymentCode);
-        return BIP47.bip32.fromPublicKey(rawPaymentCode.slice(3, 36), rawPaymentCode.slice(36, 68), network.network);
+        return Bip47Util.bip32.fromPublicKey(rawPaymentCode.slice(3, 36), rawPaymentCode.slice(36, 68), network.network);
     }
 
-    static getMasterPaymentCodeNodeFromBIP39Seed(bip39Seed: string, network: NetworkCoin, password?: string) {
-        let seed: Buffer = bip39.mnemonicToSeedSync(bip39Seed, password)
-        let node: BIP32Interface = BIP47.bip32.fromSeed(seed, network.network);
+    static getRootPaymentCodeNodeFromBIP39Seed(bip39Seed: string, network: NetworkCoin = mainnetData, password?: string) {
+        let seed: Buffer = bip39.mnemonicToSeedSync(bip39Seed, password);
+        return Bip47Util.getRootPaymentCodeNodeFromSeedHex(seed);
+    }
+
+    static getRootPaymentCodeNodeFromSeedHex(seedHex: string | Buffer, network: NetworkCoin = mainnetData) {
+        if (typeof seedHex == 'string')
+            seedHex = Buffer.from(seedHex, 'hex');
+
+        let node: BIP32Interface = Bip47Util.bip32.fromSeed(seedHex, network.network);
         return node.derivePath(`m/47'/${network.coin}'/0'`);
     }
 
@@ -130,15 +148,15 @@ export class BIP47 {
     }
 
 
-    getBlindedPaymentCode(bobBIP47: BIP47, privateKey: Buffer, outpoint: Buffer) {
-        if (!this.network || !this.masterPaymentCodeNode)
-            throw Error("Master Payment code or network not set");
+    getBlindedPaymentCode(bobBIP47: Bip47Util, privateKey: Buffer, outpoint: Buffer) {
+        if (!this.network || !this.RootPaymentCodeNode)
+            throw Error("Root Payment code or network not set");
 
         const a: Buffer = privateKey;
         const B: Buffer = bobBIP47.getNotificationNode().publicKey;
-        const S: Buffer = BIP47.uintArrayToBuffer(ecc.pointMultiply(B, a) as Buffer);
+        const S: Buffer = Bip47Util.uintArrayToBuffer(ecc.pointMultiply(B, a) as Buffer);
 
-        const x: Buffer = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
+        const x: Buffer = Bip47Util.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
         const o: Buffer = outpoint
         let _hmac = crypto.createHmac('sha512', o);
         let s = _hmac.update(x).digest();
@@ -181,8 +199,8 @@ export class BIP47 {
         let { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
         let A: Buffer = pubKey;
         let b: Buffer = this.getNotificationNode().privateKey as Buffer
-        let S: Buffer = BIP47.uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
-        let x: Buffer = BIP47.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+        let S: Buffer = Bip47Util.uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
+        let x: Buffer = Bip47Util.uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
         let _hmac = crypto.createHmac('sha512', outpoint);
         let s: Buffer = _hmac.update(x).digest();
 
