@@ -24,6 +24,7 @@
     "bitcoinjs-lib": "^6.0.1",
     "bs58check-ts": "^0.0.7",
     "crypto": "^1.0.1",
+    "ecpair": "^2.0.1",
     "tiny-secp256k1": "^2.2.1"
   },
   "devDependencies": {

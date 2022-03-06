@@ -148,9 +148,15 @@ export class Bip47Util {
     }
 
 
-    getBlindedPaymentCode(bobBIP47: Bip47Util, privateKey: Buffer, outpoint: Buffer) {
+    getBlindedPaymentCode(bobBIP47: Bip47Util, privateKey: string | Buffer, outpoint: string | Buffer): string {
         if (!this.network || !this.RootPaymentCodeNode)
             throw Error("Root Payment code or network not set");
+
+        if (typeof privateKey == 'string')
+            privateKey = Buffer.from(privateKey, 'hex');
+
+        if (typeof outpoint == 'string')
+            outpoint = Buffer.from(outpoint, 'hex');
 
         const a: Buffer = privateKey;
         const B: Buffer = bobBIP47.getNotificationNode().publicKey;

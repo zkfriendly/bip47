@@ -1,13 +1,16 @@
 import { BIP32Interface } from "bip32";
 import { expect } from "chai";
 import { Bip47Util } from "../src";
+import ECPairFactory from 'ecpair';
+import * as ecc from 'tiny-secp256k1';
+const ECPair = ECPairFactory(ecc);
 
 let alice = {
     'seedPhrase': 'response seminar brave tip suit recall often sound stick owner lottery motion',
     'seedHex': '64dca76abc9c6f0cf3d212d248c380c4622c8f93b2c425ec6a5567fd5db57e10d3e6f94a2f6af4ac2edb8998072aad92098db73558c323777abf5bd1082d970a',
     'paymentCode': 'PM8TJTLJbPRGxSbc8EJi42Wrr6QbNSaSSVJ5Y3E4pbCYiTHUskHg13935Ubb7q8tx9GVbh2UuRnBc3WSyJHhUrw8KhprKnn9eDznYGieTzFcwQRya4GA',
     'notificationAddress': '1JDdmqFLhpzcUwPeinhJbUPw4Co3aWLyzW',
-    'privateKey': 'Kx983SRhAZpAhj7Aac1wUXMJ6XZeyJKqCxJJ49dxEbYCT4a1ozRD',   // private key of outpoint used to send notification transaction to bob
+    'privateKeyWIF': 'Kx983SRhAZpAhj7Aac1wUXMJ6XZeyJKqCxJJ49dxEbYCT4a1ozRD',   // private key of outpoint used to send notification transaction to bob
     'outpoint': '86f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c01000000',  // used to send the notification transaction
     'blindedPaymentCode': '010002063e4eb95e62791b06c50e1a3a942e1ecaaa9afbbeb324d16ae6821e091611fa96c0cf048f607fe51a0327f5e2528979311c78cb2de0d682c61e1180fc3d543b00000000000000000000000000', // blinded payment code - bob should be able to decode this
 }
@@ -18,6 +21,8 @@ let bob = {
     'paymentCode': 'PM8TJS2JxQ5ztXUpBBRnpTbcUXbUHy2T1abfrb3KkAAtMEGNbey4oumH7Hc578WgQJhPjBxteQ5GHHToTYHE3A1w6p7tU6KSoFmWBVbFGjKPisZDbP97',
     'notificationAddress': '1ChvUUvht2hUQufHBXF8NgLhW8SwE2ecGV',
 }
+
+let aliceToBobRawNotificationHex = "010000000186f411ab1c8e70ae8a0795ab7a6757aea6e4d5ae1826fc7b8f00c597d500609c010000006b483045022100ac8c6dbc482c79e86c18928a8b364923c774bfdbd852059f6b3778f2319b59a7022029d7cc5724e2f41ab1fcfc0ba5a0d4f57ca76f72f19530ba97c860c70a6bf0a801210272d83d8a1fa323feab1c085157a0791b46eba34afb8bfbfaeb3a3fcc3f2c9ad8ffffffff0210270000000000001976a9148066a8e7ee82e5c5b9b7dc1765038340dc5420a988ac1027000000000000536a4c50010002063e4eb95e62791b06c50e1a3a942e1ecaaa9afbbeb324d16ae6821e091611fa96c0cf048f607fe51a0327f5e2528979311c78cb2de0d682c61e1180fc3d543b0000000000000000000000000000000000"
 
 let aliceToBobAddresses = [
     "141fi7TY3h936vRUKh1qfUZr8rSBuYbVBK",
@@ -89,5 +94,24 @@ describe("Payment Addresses and Private keys", () => {
             let wallet: BIP32Interface = bobBip47.getPaymentWallet(alicePaymentNode, i)
             expect(privateKeysAliceToBobWallets[i] == wallet.privateKey?.toString('hex'))
         }
+    })
+})
+
+describe("Notification Transaction and blinded payment code exchange", () => {
+    it("should generate Alice's blinded payment code for Bob", () => {
+        let aliceBip47 = Bip47Util.fromBip39Seed(alice.seedPhrase);
+        let bobBip47 = Bip47Util.fromPaymentCode(bob.paymentCode);
+        const keyPair = ECPair.fromWIF(alice.privateKeyWIF);
+
+        let blindedPaymentCode = aliceBip47.getBlindedPaymentCode(bobBip47, keyPair.privateKey as Buffer, alice.outpoint);
+
+        expect(blindedPaymentCode == alice.blindedPaymentCode);
+    })
+
+    it("Bob should be able to retrieve Alice's payment code, from Alice's notification transaction", () => {
+        let bobBip47 = Bip47Util.fromBip39Seed(bob.seedPhrase);
+        let p = bobBip47.getPaymentCodeFromRawNotificationTransaction(aliceToBobRawNotificationHex);
+
+        expect(p == alice.paymentCode)
     })
 })
