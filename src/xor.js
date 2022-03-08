@@ -1,14 +1,19 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.xor = void 0;
 // From https://github.com/czzarr/node-bitwise-xor/blob/master/index.js
-export function xor(a: Buffer, b: Buffer) {
-    let res = []
+function xor(a, b) {
+    const res = [];
     if (a.length > b.length) {
         for (let i = 0; i < b.length; i++) {
-            res.push(a[i] ^ b[i])
+            res.push(a[i] ^ b[i]);
         }
-    } else {
+    }
+    else {
         for (let i = 0; i < a.length; i++) {
-            res.push(a[i] ^ b[i])
+            res.push(a[i] ^ b[i]);
         }
     }
     return Buffer.from(res);
 }
+exports.xor = xor;

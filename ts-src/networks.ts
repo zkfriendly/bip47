@@ -1,13 +1,13 @@
 import { testnet, bitcoin } from 'bitcoinjs-lib/src/networks'
 import { NetworkCoin } from './interfaces'
 
-let testnetData: NetworkCoin = {
+const testnetData: NetworkCoin = {
     'network': testnet,
-    'coin': "1"
+    'coin': '1'
 }
-let mainnetData: NetworkCoin = {
+const mainnetData: NetworkCoin = {
     'network': bitcoin,
-    'coin': "0"
+    'coin': '0'
 }
 
 export { testnetData, mainnetData }
