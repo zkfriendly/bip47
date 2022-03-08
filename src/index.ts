@@ -1,1 +1,5 @@
-export { Bip47Util } from './bip47'
+import { Bip47Util } from './bip47'
+
+module.exports = {
+    Bip47Util
+};

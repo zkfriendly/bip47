@@ -1,6 +1,6 @@
 import { BIP32Interface } from "bip32";
 import { expect } from "chai";
-import { Bip47Util } from "../src";
+import { Bip47Util } from "../src/bip47";
 import ECPairFactory from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 const ECPair = ECPairFactory(ecc);
