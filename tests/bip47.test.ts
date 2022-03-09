@@ -1,8 +1,8 @@
 import { BIP32Interface } from 'bip32';
 import { expect } from 'chai';
-import { BIP47 } from '../ts-src/bip47';
 import ECPairFactory from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
+import BIP47Factory from '../ts-src';
 
 const ECPair = ECPairFactory(ecc);
 
@@ -62,39 +62,39 @@ const privateKeysAliceToBobWallets = [
 
 describe('Payment codes and notification addresses', () => {
   it('Should create payment code from seed phrase', () => {
-    const bip47 = BIP47.fromBip39Seed(alice.seedPhrase);
+    const bip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
     expect(bip47.getSerializedPaymentCode() === alice.paymentCode);
   });
   it('Should create payment code from seed hex', () => {
-    const bip47 = BIP47.fromSeedHex(alice.seedHex);
+    const bip47 = BIP47Factory(ecc).fromSeedHex(alice.seedHex);
     expect(bip47.getSerializedPaymentCode() === alice.paymentCode);
   });
   it('should create Bip47 util object from base58 payment code', () => {
-    const bip47 = BIP47.fromPaymentCode(bob.paymentCode);
+    const bip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     expect(bip47.getSerializedPaymentCode() === bob.paymentCode);
   });
   it('should get notification address from seed phrase or seed)', () => {
-    const bip47 = BIP47.fromBip39Seed(alice.seedPhrase);
+    const bip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
     expect(bip47.getNotificationAddress() === alice.notificationAddress);
   });
   it('should get notification address from payment code', () => {
-    const bip47 = BIP47.fromPaymentCode(bob.paymentCode);
+    const bip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     expect(bip47.getNotificationAddress() === bob.notificationAddress);
   });
 });
 
 describe('Payment Addresses and Private keys', () => {
-  it('should generate alice to bob payment addresses from Alice\'s node', () => {
-    const aliceBip47 = BIP47.fromBip39Seed(alice.seedPhrase);
-    const bobBip47 = BIP47.fromPaymentCode(bob.paymentCode);
+  it("should generate alice to bob payment addresses from Alice's node", () => {
+    const aliceBip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
+    const bobBip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     const bobPaymentCodeNode: BIP32Interface = bobBip47.getPaymentCodeNode();
 
     for (let i = 0; i < aliceToBobAddresses.length; i++)
       expect(aliceBip47.getPaymentAddress(bobPaymentCodeNode, i));
   });
-  it('Should generate alice to bob payment addresses and private keys from Bob\'s node', () => {
-    const bobBip47 = BIP47.fromBip39Seed(bob.seedPhrase);
-    const aliceBip47 = BIP47.fromPaymentCode(alice.paymentCode);
+  it("Should generate alice to bob payment addresses and private keys from Bob's node", () => {
+    const bobBip47 = BIP47Factory(ecc).fromBip39Seed(bob.seedPhrase);
+    const aliceBip47 = BIP47Factory(ecc).fromPaymentCode(alice.paymentCode);
     const alicePaymentNode: BIP32Interface = aliceBip47.getPaymentCodeNode();
 
     for (let i = 0; i < privateKeysAliceToBobWallets.length; i++) {
@@ -110,9 +110,9 @@ describe('Payment Addresses and Private keys', () => {
 });
 
 describe('Notification Transaction and blinded payment code exchange', () => {
-  it('should generate Alice\'s blinded payment code for Bob', () => {
-    const aliceBip47 = BIP47.fromBip39Seed(alice.seedPhrase);
-    const bobBip47 = BIP47.fromPaymentCode(bob.paymentCode);
+  it("should generate Alice's blinded payment code for Bob", () => {
+    const aliceBip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
+    const bobBip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     const keyPair = ECPair.fromWIF(alice.privateKeyWIF);
 
     const blindedPaymentCode = aliceBip47.getBlindedPaymentCode(
@@ -124,8 +124,8 @@ describe('Notification Transaction and blinded payment code exchange', () => {
     expect(blindedPaymentCode === alice.blindedPaymentCode);
   });
 
-  it('Bob should be able to retrieve Alice\'s payment code, from Alice\'s notification transaction', () => {
-    const bobBip47 = BIP47.fromBip39Seed(bob.seedPhrase);
+  it("Bob should be able to retrieve Alice's payment code, from Alice's notification transaction", () => {
+    const bobBip47 = BIP47Factory(ecc).fromBip39Seed(bob.seedPhrase);
     const p = bobBip47.getPaymentCodeFromRawNotificationTransaction(
       aliceToBobRawNotificationHex,
     );
