@@ -10,6 +10,9 @@ const networks_1 = require("./networks");
 const utils_1 = require("./utils");
 function BIP47Factory(ecc) {
     // TODO: implement a test assertion function for ecc
+    const bip32 = (0, bip32_1.default)(ecc);
+    const G = Buffer.from('0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 'hex');
+    const { getPublicPaymentCodeNodeFromBase58, getRootPaymentCodeNodeFromSeedHex, getRootPaymentCodeNodeFromBIP39Seed, uintArrayToBuffer, getSharedSecret, } = (0, utils_1.default)(ecc, bip32);
     class BIP47 {
         constructor(network, RootPaymentCodeNode) {
             this.network = network;
@@ -20,9 +23,9 @@ function BIP47Factory(ecc) {
                 throw Error('Root Payment code or network not set');
             const alicePrivateNode = this.RootPaymentCodeNode.derive(index);
             const bobsFirstPaymentCodeNode = bobsRootPaymentCodeNode.derive(0);
-            const s = (0, utils_1.getSharedSecret)(ecc, bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
-            const prvKey = (0, utils_1.uintArrayToBuffer)(ecc.privateAdd(alicePrivateNode.privateKey, s));
-            return BIP47.bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
+            const s = getSharedSecret(bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
+            const prvKey = uintArrayToBuffer(ecc.privateAdd(alicePrivateNode.privateKey, s));
+            return bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
         }
         getPaymentCodeNode() {
             return this.RootPaymentCodeNode;
@@ -34,10 +37,10 @@ function BIP47Factory(ecc) {
             const bobPaymentCodeNode = bobsRootPaymentCodeNode.derive(index);
             const a = firstAlicePaymentCodeNode.privateKey;
             const B = bobPaymentCodeNode.publicKey;
-            const s = (0, utils_1.getSharedSecret)(ecc, B, a);
-            const sG = ecc.pointMultiply(BIP47.G, s, true);
-            const BPrime = (0, utils_1.uintArrayToBuffer)(ecc.pointAdd(B, sG, true));
-            const node = BIP47.bip32.fromPublicKey(BPrime, bobPaymentCodeNode.chainCode, this.network.network);
+            const s = getSharedSecret(B, a);
+            const sG = ecc.pointMultiply(G, s, true);
+            const BPrime = uintArrayToBuffer(ecc.pointAdd(B, sG, true));
+            const node = bip32.fromPublicKey(BPrime, bobPaymentCodeNode.chainCode, this.network.network);
             return this.getAddressFromNode(node);
         }
         getSerializedPaymentCode() {
@@ -63,7 +66,7 @@ function BIP47Factory(ecc) {
         getNotificationNodeFromPaymentCode(paymentCode) {
             if (!this.network || !this.RootPaymentCodeNode)
                 throw Error('Root Payment code or network not set');
-            return (0, utils_1.getPublicPaymentCodeNodeFromBase58)(ecc, paymentCode, this.network);
+            return getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
         }
         getNotificationAddressFromPaymentCode(paymentCode) {
             return this.getAddressFromNode(this.getNotificationNodeFromPaymentCode(paymentCode));
@@ -86,8 +89,8 @@ function BIP47Factory(ecc) {
                 outpoint = Buffer.from(outpoint, 'hex');
             const a = privateKey;
             const B = bobBIP47.getNotificationNode().publicKey;
-            const S = (0, utils_1.uintArrayToBuffer)(ecc.pointMultiply(B, a));
-            const x = (0, utils_1.uintArrayToBuffer)(ecc.xOnlyPointFromPoint(S));
+            const S = uintArrayToBuffer(ecc.pointMultiply(B, a));
+            const x = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
             const o = outpoint;
             const s = crypto.hmacSHA512(o, x);
             const binaryPaymentCode = this.getBinaryPaymentCode();
@@ -118,8 +121,8 @@ function BIP47Factory(ecc) {
             const { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
             const A = pubKey;
             const b = this.getNotificationNode().privateKey;
-            const S = (0, utils_1.uintArrayToBuffer)(ecc.pointMultiply(A, b));
-            const x = (0, utils_1.uintArrayToBuffer)(ecc.xOnlyPointFromPoint(S));
+            const S = uintArrayToBuffer(ecc.pointMultiply(A, b));
+            const x = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
             const s = crypto.hmacSHA512(outpoint, x);
             const opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
             if (!opReturnOutput)
@@ -130,16 +133,14 @@ function BIP47Factory(ecc) {
             return bs58check_ts_1.default.encode(Buffer.concat([Buffer.from([71]), binaryPaymentCode]));
         }
     }
-    BIP47.G = Buffer.from('0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 'hex');
-    BIP47.bip32 = (0, bip32_1.default)(ecc);
     function fromPaymentCode(paymentCode, network = networks_1.mainnetData) {
-        return new BIP47(network, (0, utils_1.getPublicPaymentCodeNodeFromBase58)(ecc, paymentCode, network));
+        return new BIP47(network, getPublicPaymentCodeNodeFromBase58(paymentCode, network));
     }
     function fromBip39Seed(bip39Seed, network = networks_1.mainnetData, password) {
-        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromBIP39Seed)(ecc, bip39Seed, network, password));
+        return new BIP47(network, getRootPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password));
     }
     function fromSeedHex(seedHex, network = networks_1.mainnetData) {
-        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromSeedHex)(ecc, seedHex, network));
+        return new BIP47(network, getRootPaymentCodeNodeFromSeedHex(seedHex, network));
     }
     return {
         fromSeedHex,

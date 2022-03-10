@@ -11,24 +11,26 @@ import {
   TinySecp256k1Interface,
 } from './interfaces';
 import { mainnetData } from './networks';
-import {
-  getPublicPaymentCodeNodeFromBase58,
-  getRootPaymentCodeNodeFromBIP39Seed,
-  getRootPaymentCodeNodeFromSeedHex,
-  getSharedSecret,
-  uintArrayToBuffer,
-} from './utils';
+import getUtils from './utils';
 
 export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   // TODO: implement a test assertion function for ecc
 
-  class BIP47 implements BIP47Interface {
-    static G: Buffer = Buffer.from(
-      '0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798',
-      'hex',
-    );
-    static bip32: BIP32API = BIP32Factory(ecc);
+  const bip32: BIP32API = BIP32Factory(ecc);
 
+  const G: Buffer = Buffer.from(
+    '0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798',
+    'hex',
+  );
+  const {
+    getPublicPaymentCodeNodeFromBase58,
+    getRootPaymentCodeNodeFromSeedHex,
+    getRootPaymentCodeNodeFromBIP39Seed,
+    uintArrayToBuffer,
+    getSharedSecret,
+  } = getUtils(ecc, bip32);
+
+  class BIP47 implements BIP47Interface {
     network: NetworkCoin;
     RootPaymentCodeNode: BIP32Interface;
 
@@ -49,14 +51,13 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const bobsFirstPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(0);
       const s = getSharedSecret(
-        ecc,
         bobsFirstPaymentCodeNode.publicKey,
         alicePrivateNode.privateKey as Buffer,
       );
       const prvKey = uintArrayToBuffer(
         ecc.privateAdd(alicePrivateNode.privateKey as Buffer, s) as Buffer,
       );
-      return BIP47.bip32.fromPrivateKey(
+      return bip32.fromPrivateKey(
         prvKey,
         bobsFirstPaymentCodeNode.chainCode,
         this.network.network,
@@ -80,13 +81,13 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
 
       const a: Buffer = firstAlicePaymentCodeNode.privateKey as Buffer;
       const B: Buffer = bobPaymentCodeNode.publicKey;
-      const s = getSharedSecret(ecc, B, a);
-      const sG: Buffer = ecc.pointMultiply(BIP47.G, s, true) as Buffer;
+      const s = getSharedSecret(B, a);
+      const sG: Buffer = ecc.pointMultiply(G, s, true) as Buffer;
       const BPrime: Buffer = uintArrayToBuffer(
         ecc.pointAdd(B, sG, true) as Buffer,
       );
 
-      const node: BIP32Interface = BIP47.bip32.fromPublicKey(
+      const node: BIP32Interface = bip32.fromPublicKey(
         BPrime,
         bobPaymentCodeNode.chainCode,
         this.network.network,
@@ -122,7 +123,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
     getNotificationNodeFromPaymentCode(paymentCode: string): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
         throw Error('Root Payment code or network not set');
-      return getPublicPaymentCodeNodeFromBase58(ecc, paymentCode, this.network);
+      return getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
     }
 
     getNotificationAddressFromPaymentCode(paymentCode: string): string {
@@ -248,7 +249,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getPublicPaymentCodeNodeFromBase58(ecc, paymentCode, network),
+      getPublicPaymentCodeNodeFromBase58(paymentCode, network),
     );
   }
 
@@ -259,7 +260,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getRootPaymentCodeNodeFromBIP39Seed(ecc, bip39Seed, network, password),
+      getRootPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password),
     );
   }
 
@@ -269,7 +270,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getRootPaymentCodeNodeFromSeedHex(ecc, seedHex, network),
+      getRootPaymentCodeNodeFromSeedHex(seedHex, network),
     );
   }
 
