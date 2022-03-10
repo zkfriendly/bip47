@@ -49,6 +49,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const bobsFirstPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(0);
       const s = getSharedSecret(
+        ecc,
         bobsFirstPaymentCodeNode.publicKey,
         alicePrivateNode.privateKey as Buffer,
       );
@@ -79,7 +80,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
 
       const a: Buffer = firstAlicePaymentCodeNode.privateKey as Buffer;
       const B: Buffer = bobPaymentCodeNode.publicKey;
-      const s = getSharedSecret(B, a);
+      const s = getSharedSecret(ecc, B, a);
       const sG: Buffer = ecc.pointMultiply(BIP47.G, s, true) as Buffer;
       const BPrime: Buffer = uintArrayToBuffer(
         ecc.pointAdd(B, sG, true) as Buffer,
@@ -121,7 +122,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
     getNotificationNodeFromPaymentCode(paymentCode: string): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
         throw Error('Root Payment code or network not set');
-      return getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
+      return getPublicPaymentCodeNodeFromBase58(ecc, paymentCode, this.network);
     }
 
     getNotificationAddressFromPaymentCode(paymentCode: string): string {
@@ -247,7 +248,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getPublicPaymentCodeNodeFromBase58(paymentCode, network),
+      getPublicPaymentCodeNodeFromBase58(ecc, paymentCode, network),
     );
   }
 
@@ -258,7 +259,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getRootPaymentCodeNodeFromBIP39Seed(bip39Seed, network, password),
+      getRootPaymentCodeNodeFromBIP39Seed(ecc, bip39Seed, network, password),
     );
   }
 
@@ -268,7 +269,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
   ): BIP47Interface {
     return new BIP47(
       network,
-      getRootPaymentCodeNodeFromSeedHex(seedHex, network),
+      getRootPaymentCodeNodeFromSeedHex(ecc, seedHex, network),
     );
   }
 

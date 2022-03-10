@@ -20,7 +20,7 @@ function BIP47Factory(ecc) {
                 throw Error('Root Payment code or network not set');
             const alicePrivateNode = this.RootPaymentCodeNode.derive(index);
             const bobsFirstPaymentCodeNode = bobsRootPaymentCodeNode.derive(0);
-            const s = (0, utils_1.getSharedSecret)(bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
+            const s = (0, utils_1.getSharedSecret)(ecc, bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
             const prvKey = (0, utils_1.uintArrayToBuffer)(ecc.privateAdd(alicePrivateNode.privateKey, s));
             return BIP47.bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
         }
@@ -34,7 +34,7 @@ function BIP47Factory(ecc) {
             const bobPaymentCodeNode = bobsRootPaymentCodeNode.derive(index);
             const a = firstAlicePaymentCodeNode.privateKey;
             const B = bobPaymentCodeNode.publicKey;
-            const s = (0, utils_1.getSharedSecret)(B, a);
+            const s = (0, utils_1.getSharedSecret)(ecc, B, a);
             const sG = ecc.pointMultiply(BIP47.G, s, true);
             const BPrime = (0, utils_1.uintArrayToBuffer)(ecc.pointAdd(B, sG, true));
             const node = BIP47.bip32.fromPublicKey(BPrime, bobPaymentCodeNode.chainCode, this.network.network);
@@ -63,7 +63,7 @@ function BIP47Factory(ecc) {
         getNotificationNodeFromPaymentCode(paymentCode) {
             if (!this.network || !this.RootPaymentCodeNode)
                 throw Error('Root Payment code or network not set');
-            return (0, utils_1.getPublicPaymentCodeNodeFromBase58)(paymentCode, this.network);
+            return (0, utils_1.getPublicPaymentCodeNodeFromBase58)(ecc, paymentCode, this.network);
         }
         getNotificationAddressFromPaymentCode(paymentCode) {
             return this.getAddressFromNode(this.getNotificationNodeFromPaymentCode(paymentCode));
@@ -133,13 +133,13 @@ function BIP47Factory(ecc) {
     BIP47.G = Buffer.from('0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 'hex');
     BIP47.bip32 = (0, bip32_1.default)(ecc);
     function fromPaymentCode(paymentCode, network = networks_1.mainnetData) {
-        return new BIP47(network, (0, utils_1.getPublicPaymentCodeNodeFromBase58)(paymentCode, network));
+        return new BIP47(network, (0, utils_1.getPublicPaymentCodeNodeFromBase58)(ecc, paymentCode, network));
     }
     function fromBip39Seed(bip39Seed, network = networks_1.mainnetData, password) {
-        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromBIP39Seed)(bip39Seed, network, password));
+        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromBIP39Seed)(ecc, bip39Seed, network, password));
     }
     function fromSeedHex(seedHex, network = networks_1.mainnetData) {
-        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromSeedHex)(seedHex, network));
+        return new BIP47(network, (0, utils_1.getRootPaymentCodeNodeFromSeedHex)(ecc, seedHex, network));
     }
     return {
         fromSeedHex,
