@@ -45,13 +45,13 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       index: number,
     ): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code node or network not set');
+        throw new Error('Root Payment code node or network not set');
 
       const alicePrivateNode: BIP32Interface =
         this.RootPaymentCodeNode.deriveHardened(index);
 
       if (alicePrivateNode.privateKey === undefined)
-        throw Error('Missing private key to generate payment wallets')
+        throw new Error('Missing private key to generate payment wallets')
 
       const bobsFirstPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(0);
@@ -66,7 +66,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const prvKeyUint8: Uint8Array | null = ecc.privateAdd(alicePrivateNode.privateKey, s);
 
       if (prvKeyUint8 === null)
-        throw Error("Could not calculate private key")
+        throw new Error("Could not calculate private key")
 
       let prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
       return bip32.fromPrivateKey(
@@ -87,17 +87,35 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       if (!this.network || !this.RootPaymentCodeNode)
         throw new Error('Root Payment code or network not set');
       const firstAlicePaymentCodeNode: BIP32Interface =
-        this.RootPaymentCodeNode.derive(0);
+        this.RootPaymentCodeNode.deriveHardened(0);
       const bobPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(index);
 
-      const a: Buffer = firstAlicePaymentCodeNode.privateKey as Buffer;
+      if (firstAlicePaymentCodeNode.privateKey === undefined)
+        throw new Error("Missing private key to generate payment address")
+
+      const a: Buffer = firstAlicePaymentCodeNode.privateKey;
       const B: Buffer = bobPaymentCodeNode.publicKey;
       const s = getSharedSecret(B, a);
-      const sG: Buffer = ecc.pointMultiply(G, s, true) as Buffer;
-      const BPrime: Buffer = uintArrayToBuffer(
-        ecc.pointAdd(B, sG, true) as Buffer,
-      );
+
+      if (!ecc.isPrivate(s))
+        throw new Error("Shared secret is not a private key")
+
+      const sGUint: Uint8Array | null = ecc.pointMultiply(G, s, true);
+
+      if (sGUint === null)
+        throw new Error("Could not compute sG")
+
+      const sG: Buffer = uintArrayToBuffer(sGUint);
+      const BPrimeUint: Uint8Array | null = ecc.pointAdd(B, sG, true);
+
+      if (BPrimeUint === null)
+        throw new Error("Could not calculate pubkey");
+
+      const BPrime: Buffer = uintArrayToBuffer(BPrimeUint);
+
+      if (!ecc.isPoint(BPrime))
+        throw new Error("Calculate Pubkey is invalid");
 
       const node: BIP32Interface = bip32.fromPublicKey(
         BPrime,
@@ -115,7 +133,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
 
     getBinaryPaymentCode(): Buffer {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code or network not set');
+        throw new Error('Root Payment code or network not set');
       const node = this.RootPaymentCodeNode;
       const paymentCodeSerializedBuffer: Buffer = Buffer.alloc(80);
       paymentCodeSerializedBuffer[0] = 0x01; // version
@@ -128,13 +146,13 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
 
     getNotificationNode(): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code or network not set');
+        throw new Error('Root Payment code or network not set');
       return this.RootPaymentCodeNode.derive(0);
     }
 
     getNotificationNodeFromPaymentCode(paymentCode: string): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code or network not set');
+        throw new Error('Root Payment code or network not set');
       return getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
     }
 
@@ -161,7 +179,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       outpoint: string | Buffer,
     ): string {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code or network not set');
+        throw new Error('Root Payment code or network not set');
 
       if (typeof privateKey === 'string')
         privateKey = Buffer.from(privateKey, 'hex');
@@ -209,7 +227,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
           bitcoin.script.toASM(first.script).split(' ')[1],
           'hex',
         );
-      else throw Error('Unknown Transaction type');
+      else throw new Error('Unknown Transaction type');
 
       return {
         outpoint,
@@ -234,7 +252,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
         o.script.toString('hex').startsWith('6a4c50'),
       );
 
-      if (!opReturnOutput) throw Error('No OP_RETURN output in notification');
+      if (!opReturnOutput) throw new Error('No OP_RETURN output in notification');
 
       const binaryPaymentCode: Buffer = opReturnOutput.script.slice(3);
 
