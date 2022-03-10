@@ -53,7 +53,7 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
 
     let s: Buffer = bitcoin.crypto.sha256(S);
     if (!ecc.isPrivate(s))
-      throw new Error("Share secret is not a valid private key")
+      throw new Error("Shared secret is not a valid private key")
 
     return s;
   };
