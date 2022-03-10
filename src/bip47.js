@@ -4,7 +4,7 @@ exports.BIP47Factory = void 0;
 const bip32_1 = require("bip32");
 const bitcoin = require("bitcoinjs-lib");
 const bs58check_ts_1 = require("bs58check-ts");
-const crypto = require("crypto");
+const crypto = require("./crypto");
 const xor_1 = require("./xor");
 const networks_1 = require("./networks");
 const utils_1 = require("./utils");
@@ -89,8 +89,7 @@ function BIP47Factory(ecc) {
             const S = (0, utils_1.uintArrayToBuffer)(ecc.pointMultiply(B, a));
             const x = (0, utils_1.uintArrayToBuffer)(ecc.xOnlyPointFromPoint(S));
             const o = outpoint;
-            const _hmac = crypto.createHmac('sha512', o);
-            const s = _hmac.update(x).digest();
+            const s = crypto.hmacSHA512(o, x);
             const binaryPaymentCode = this.getBinaryPaymentCode();
             binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
             binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);
@@ -121,8 +120,7 @@ function BIP47Factory(ecc) {
             const b = this.getNotificationNode().privateKey;
             const S = (0, utils_1.uintArrayToBuffer)(ecc.pointMultiply(A, b));
             const x = (0, utils_1.uintArrayToBuffer)(ecc.xOnlyPointFromPoint(S));
-            const _hmac = crypto.createHmac('sha512', outpoint);
-            const s = _hmac.update(x).digest();
+            const s = crypto.hmacSHA512(outpoint, x);
             const opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
             if (!opReturnOutput)
                 throw Error('No OP_RETURN output in notification');

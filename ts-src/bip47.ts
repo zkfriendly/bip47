@@ -1,7 +1,7 @@
 import BIP32Factory, { BIP32API, BIP32Interface } from 'bip32';
 import * as bitcoin from 'bitcoinjs-lib';
 import bs58safe from 'bs58check-ts';
-import * as crypto from 'crypto';
+import * as crypto from './crypto';
 import { xor } from './xor';
 import {
   BIP47API,
@@ -160,8 +160,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
 
       const x: Buffer = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
       const o: Buffer = outpoint;
-      const _hmac = crypto.createHmac('sha512', o);
-      const s = _hmac.update(x).digest();
+      const s = crypto.hmacSHA512(o, x);
 
       const binaryPaymentCode: Buffer = this.getBinaryPaymentCode();
       binaryPaymentCode.fill(
@@ -215,8 +214,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const b: Buffer = this.getNotificationNode().privateKey as Buffer;
       const S: Buffer = uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
       const x: Buffer = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
-      const _hmac = crypto.createHmac('sha512', outpoint);
-      const s: Buffer = _hmac.update(x).digest();
+      const s = crypto.hmacSHA512(outpoint, x);
 
       const opReturnOutput = tx.outs.find((o) =>
         o.script.toString('hex').startsWith('6a4c50'),
