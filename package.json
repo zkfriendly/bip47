@@ -33,7 +33,7 @@
     "bip32": "^3.0.1",
     "bip39": "^3.0.4",
     "bitcoinjs-lib": "^6.0.1",
-    "bs58check-ts": "^0.0.7",
+    "bs58check": "^2.1.1",
     "create-hmac": "^1.1.7",
     "ecpair": "^2.0.1",
     "tiny-secp256k1": "^2.2.1"

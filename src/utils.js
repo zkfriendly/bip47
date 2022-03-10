@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const bs58check_ts_1 = require("bs58check-ts");
 const networks_1 = require("./networks");
 const bip39 = require("bip39");
 const bitcoin = require("bitcoinjs-lib");
+const bs58check = require('bs58check');
 function getUtils(ecc, bip32) {
     const getPublicPaymentCodeNodeFromBase58 = (paymentCode, network) => {
-        const rawPaymentCode = bs58check_ts_1.default.decode(paymentCode);
+        const rawPaymentCode = bs58check.decode(paymentCode);
         return bip32.fromPublicKey(rawPaymentCode.slice(3, 36), rawPaymentCode.slice(36, 68), network.network);
     };
     const getRootPaymentCodeNodeFromSeedHex = (seedHex, network = networks_1.mainnetData) => {
