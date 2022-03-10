@@ -45,12 +45,12 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
     return b;
   };
 
-  const getSharedSecret = (B: Buffer, a: Buffer) => {
-    const SUint: Uint8Array = ecc.xOnlyPointFromPoint(
-      ecc.pointMultiply(B, a, true) as Uint8Array,
-    ) as Uint8Array;
-    const S: Buffer = Buffer.alloc(32);
-    for (let i = 0; i < S.length; i++) S[i] = SUint[i]; // uint8Array to Buffer
+  const getSharedSecret = (B: Buffer, a: Buffer): Buffer => {
+    const S: Buffer = uintArrayToBuffer(
+      ecc.xOnlyPointFromPoint(
+        ecc.pointMultiply(B, a, true) as Buffer
+      ))
+
     return bitcoin.crypto.sha256(S);
   };
 

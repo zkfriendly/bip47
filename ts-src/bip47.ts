@@ -45,19 +45,30 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       index: number,
     ): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
-        throw Error('Root Payment code or network not set');
+        throw Error('Root Payment code node or network not set');
 
       const alicePrivateNode: BIP32Interface =
-        this.RootPaymentCodeNode.derive(index);
+        this.RootPaymentCodeNode.deriveHardened(index);
+
+      if (alicePrivateNode.privateKey === undefined)
+        throw Error('Missing private key to generate payment wallets')
+
       const bobsFirstPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(0);
-      const s = getSharedSecret(
+      const s: Buffer = getSharedSecret(
         bobsFirstPaymentCodeNode.publicKey,
-        alicePrivateNode.privateKey as Buffer,
+        alicePrivateNode.privateKey,
       );
-      const prvKey = uintArrayToBuffer(
-        ecc.privateAdd(alicePrivateNode.privateKey as Buffer, s) as Buffer,
-      );
+
+      if (!ecc.isPrivate(s))
+        throw new Error('Shared secret is not a private key');
+
+      const prvKeyUint8: Uint8Array | null = ecc.privateAdd(alicePrivateNode.privateKey, s);
+
+      if (prvKeyUint8 === null)
+        throw Error("Could not calculate private key")
+
+      let prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
       return bip32.fromPrivateKey(
         prvKey,
         bobsFirstPaymentCodeNode.chainCode,
