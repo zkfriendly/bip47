@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spsina/BIP47.git"
+    "url": "git+https://github.com/spsina/bip47.git"
   },
   "files": [
     "src",
@@ -51,6 +51,6 @@
   "author": "Sina Parvizi",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/spsina/BIP47/issues"
+    "url": "https://github.com/spsina/bip47/issues"
   }
 }
