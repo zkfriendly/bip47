@@ -51,7 +51,11 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
         ecc.pointMultiply(B, a, true) as Buffer
       ))
 
-    return bitcoin.crypto.sha256(S);
+    let s: Buffer = bitcoin.crypto.sha256(S);
+    if (!ecc.isPrivate(s))
+      throw new Error("Share secret is not a valid private key")
+
+    return s;
   };
 
   return {

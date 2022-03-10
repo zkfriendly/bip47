@@ -59,10 +59,6 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
         bobsFirstPaymentCodeNode.publicKey,
         alicePrivateNode.privateKey,
       );
-
-      if (!ecc.isPrivate(s))
-        throw new Error('Shared secret is not a private key');
-
       const prvKeyUint8: Uint8Array | null = ecc.privateAdd(alicePrivateNode.privateKey, s);
 
       if (prvKeyUint8 === null)
@@ -97,10 +93,6 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const a: Buffer = firstAlicePaymentCodeNode.privateKey;
       const B: Buffer = bobPaymentCodeNode.publicKey;
       const s = getSharedSecret(B, a);
-
-      if (!ecc.isPrivate(s))
-        throw new Error("Shared secret is not a private key")
-
       const sGUint: Uint8Array | null = ecc.pointMultiply(G, s, true);
 
       if (sGUint === null)
