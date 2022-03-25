@@ -20,11 +20,16 @@ function BIP47Factory(ecc) {
         }
         getPaymentWallet(bobsRootPaymentCodeNode, index) {
             if (!this.network || !this.RootPaymentCodeNode)
-                throw Error('Root Payment code or network not set');
-            const alicePrivateNode = this.RootPaymentCodeNode.derive(index);
+                throw new Error('Root Payment code node or network not set');
+            const alicePrivateNode = this.RootPaymentCodeNode.deriveHardened(index);
+            if (alicePrivateNode.privateKey === undefined)
+                throw new Error('Missing private key to generate payment wallets');
             const bobsFirstPaymentCodeNode = bobsRootPaymentCodeNode.derive(0);
             const s = getSharedSecret(bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
-            const prvKey = uintArrayToBuffer(ecc.privateAdd(alicePrivateNode.privateKey, s));
+            const prvKeyUint8 = ecc.privateAdd(alicePrivateNode.privateKey, s);
+            if (prvKeyUint8 === null)
+                throw new Error("Could not calculate private key");
+            let prvKey = uintArrayToBuffer(prvKeyUint8);
             return bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
         }
         getPaymentCodeNode() {
@@ -33,13 +38,23 @@ function BIP47Factory(ecc) {
         getPaymentAddress(bobsRootPaymentCodeNode, index) {
             if (!this.network || !this.RootPaymentCodeNode)
                 throw new Error('Root Payment code or network not set');
-            const firstAlicePaymentCodeNode = this.RootPaymentCodeNode.derive(0);
+            const firstAlicePaymentCodeNode = this.RootPaymentCodeNode.deriveHardened(0);
             const bobPaymentCodeNode = bobsRootPaymentCodeNode.derive(index);
+            if (firstAlicePaymentCodeNode.privateKey === undefined)
+                throw new Error("Missing private key to generate payment address");
             const a = firstAlicePaymentCodeNode.privateKey;
             const B = bobPaymentCodeNode.publicKey;
             const s = getSharedSecret(B, a);
-            const sG = ecc.pointMultiply(G, s, true);
-            const BPrime = uintArrayToBuffer(ecc.pointAdd(B, sG, true));
+            const sGUint = ecc.pointMultiply(G, s, true);
+            if (sGUint === null)
+                throw new Error("Could not compute sG");
+            const sG = uintArrayToBuffer(sGUint);
+            const BPrimeUint = ecc.pointAdd(B, sG, true);
+            if (BPrimeUint === null)
+                throw new Error("Could not calculate pubkey");
+            const BPrime = uintArrayToBuffer(BPrimeUint);
+            if (!ecc.isPoint(BPrime))
+                throw new Error("Calculate Pubkey is invalid");
             const node = bip32.fromPublicKey(BPrime, bobPaymentCodeNode.chainCode, this.network.network);
             return this.getAddressFromNode(node);
         }
@@ -48,7 +63,7 @@ function BIP47Factory(ecc) {
         }
         getBinaryPaymentCode() {
             if (!this.network || !this.RootPaymentCodeNode)
-                throw Error('Root Payment code or network not set');
+                throw new Error('Root Payment code or network not set');
             const node = this.RootPaymentCodeNode;
             const paymentCodeSerializedBuffer = Buffer.alloc(80);
             paymentCodeSerializedBuffer[0] = 0x01; // version
@@ -60,12 +75,12 @@ function BIP47Factory(ecc) {
         }
         getNotificationNode() {
             if (!this.network || !this.RootPaymentCodeNode)
-                throw Error('Root Payment code or network not set');
+                throw new Error('Root Payment code or network not set');
             return this.RootPaymentCodeNode.derive(0);
         }
         getNotificationNodeFromPaymentCode(paymentCode) {
             if (!this.network || !this.RootPaymentCodeNode)
-                throw Error('Root Payment code or network not set');
+                throw new Error('Root Payment code or network not set');
             return getPublicPaymentCodeNodeFromBase58(paymentCode, this.network);
         }
         getNotificationAddressFromPaymentCode(paymentCode) {
@@ -82,7 +97,7 @@ function BIP47Factory(ecc) {
         }
         getBlindedPaymentCode(bobBIP47, privateKey, outpoint) {
             if (!this.network || !this.RootPaymentCodeNode)
-                throw Error('Root Payment code or network not set');
+                throw new Error('Root Payment code or network not set');
             if (typeof privateKey === 'string')
                 privateKey = Buffer.from(privateKey, 'hex');
             if (typeof outpoint === 'string')
@@ -110,7 +125,7 @@ function BIP47Factory(ecc) {
             else if (bitcoin.script.toASM(first.script).split(' ').length === 2)
                 pubKey = Buffer.from(bitcoin.script.toASM(first.script).split(' ')[1], 'hex');
             else
-                throw Error('Unknown Transaction type');
+                throw new Error('Unknown Transaction type');
             return {
                 outpoint,
                 pubKey,
@@ -126,7 +141,7 @@ function BIP47Factory(ecc) {
             const s = crypto.hmacSHA512(outpoint, x);
             const opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
             if (!opReturnOutput)
-                throw Error('No OP_RETURN output in notification');
+                throw new Error('No OP_RETURN output in notification');
             const binaryPaymentCode = opReturnOutput.script.slice(3);
             binaryPaymentCode.fill((0, xor_1.xor)(s.slice(0, 32), binaryPaymentCode.slice(3, 35)), 3, 35);
             binaryPaymentCode.fill((0, xor_1.xor)(s.slice(32, 64), binaryPaymentCode.slice(35, 67)), 35, 67);

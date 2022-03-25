@@ -26,11 +26,11 @@ function getUtils(ecc, bip32) {
         return b;
     };
     const getSharedSecret = (B, a) => {
-        const SUint = ecc.xOnlyPointFromPoint(ecc.pointMultiply(B, a, true));
-        const S = Buffer.alloc(32);
-        for (let i = 0; i < S.length; i++)
-            S[i] = SUint[i]; // uint8Array to Buffer
-        return bitcoin.crypto.sha256(S);
+        const S = uintArrayToBuffer(ecc.xOnlyPointFromPoint(ecc.pointMultiply(B, a, true)));
+        let s = bitcoin.crypto.sha256(S);
+        if (!ecc.isPrivate(s))
+            throw new Error("Shared secret is not a valid private key");
+        return s;
     };
     return {
         getPublicPaymentCodeNodeFromBase58,
