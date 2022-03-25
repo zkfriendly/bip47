@@ -1,11 +1,15 @@
 {
-  "name": "bip47",
-  "version": "0.0.1",
+  "name": "@spsina/bip47",
+  "version": "1.0.0",
   "description": "bip47 utility functions",
   "keywords": [
-    "bip47",
+    "bitcoin",
+    "bitcoinjs",
+    "bitcoinjs-lib",
     "paynyms",
-    "payment-codes"
+    "payment-codes",
+    "bip47",
+    "bip-47"
   ],
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
