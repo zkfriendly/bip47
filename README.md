@@ -20,4 +20,5 @@ see tests for examples
 
 ## Donations
 We appreciate your donations if you found this repository useful :)
+
 [paynym.is/+frostydarkness08a](https://paynym.is/+frostydarkness08a)
