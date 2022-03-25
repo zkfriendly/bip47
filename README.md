@@ -18,4 +18,6 @@ see tests for examples
 
 [BIP-47 Test Vectors](https://gist.github.com/SamouraiDev/6aad669604c5930864bd)
 
-
+## Donations
+We appreciate your donations if you found this repository useful :)
+[paynym.is/+frostydarkness08a](https://paynym.is/+frostydarkness08a)
