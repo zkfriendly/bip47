@@ -7,4 +7,5 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API): 
     getRootPaymentCodeNodeFromBIP39Seed: (bip39Seed: string, network?: NetworkCoin, password?: string | undefined) => BIP32Interface;
     uintArrayToBuffer: (array: Uint8Array) => Buffer;
     getSharedSecret: (B: Buffer, a: Buffer) => Buffer;
+    toInternalByteOrder: (data: Buffer) => Buffer;
 };

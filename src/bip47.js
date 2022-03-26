@@ -12,25 +12,25 @@ function BIP47Factory(ecc) {
     // TODO: implement a test assertion function for ecc
     const bip32 = (0, bip32_1.default)(ecc);
     const G = Buffer.from('0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 'hex');
-    const { getPublicPaymentCodeNodeFromBase58, getRootPaymentCodeNodeFromSeedHex, getRootPaymentCodeNodeFromBIP39Seed, uintArrayToBuffer, getSharedSecret, } = (0, utils_1.default)(ecc, bip32);
+    const { getPublicPaymentCodeNodeFromBase58, getRootPaymentCodeNodeFromSeedHex, getRootPaymentCodeNodeFromBIP39Seed, uintArrayToBuffer, getSharedSecret, toInternalByteOrder } = (0, utils_1.default)(ecc, bip32);
     class BIP47 {
         constructor(network, RootPaymentCodeNode) {
             this.network = network;
             this.RootPaymentCodeNode = RootPaymentCodeNode;
         }
-        getPaymentWallet(bobsRootPaymentCodeNode, index) {
+        getPaymentWallet(aliceNode, index) {
             if (!this.network || !this.RootPaymentCodeNode)
                 throw new Error('Root Payment code node or network not set');
-            const alicePrivateNode = this.RootPaymentCodeNode.deriveHardened(index);
-            if (alicePrivateNode.privateKey === undefined)
+            const bobNode = this.RootPaymentCodeNode.derive(index);
+            if (bobNode.privateKey === undefined)
                 throw new Error('Missing private key to generate payment wallets');
-            const bobsFirstPaymentCodeNode = bobsRootPaymentCodeNode.derive(0);
-            const s = getSharedSecret(bobsFirstPaymentCodeNode.publicKey, alicePrivateNode.privateKey);
-            const prvKeyUint8 = ecc.privateAdd(alicePrivateNode.privateKey, s);
+            const firstAliceNode = aliceNode.derive(0);
+            const s = getSharedSecret(firstAliceNode.publicKey, bobNode.privateKey);
+            const prvKeyUint8 = ecc.privateAdd(bobNode.privateKey, s);
             if (prvKeyUint8 === null)
-                throw new Error("Could not calculate private key");
-            let prvKey = uintArrayToBuffer(prvKeyUint8);
-            return bip32.fromPrivateKey(prvKey, bobsFirstPaymentCodeNode.chainCode, this.network.network);
+                throw new Error('Could not calculate private key');
+            const prvKey = uintArrayToBuffer(prvKeyUint8);
+            return bip32.fromPrivateKey(prvKey, bobNode.chainCode, this.network.network);
         }
         getPaymentCodeNode() {
             return this.RootPaymentCodeNode;
@@ -38,23 +38,23 @@ function BIP47Factory(ecc) {
         getPaymentAddress(bobsRootPaymentCodeNode, index) {
             if (!this.network || !this.RootPaymentCodeNode)
                 throw new Error('Root Payment code or network not set');
-            const firstAlicePaymentCodeNode = this.RootPaymentCodeNode.deriveHardened(0);
+            const firstAlicePaymentCodeNode = this.RootPaymentCodeNode.derive(0);
             const bobPaymentCodeNode = bobsRootPaymentCodeNode.derive(index);
             if (firstAlicePaymentCodeNode.privateKey === undefined)
-                throw new Error("Missing private key to generate payment address");
+                throw new Error('Missing private key to generate payment address');
             const a = firstAlicePaymentCodeNode.privateKey;
             const B = bobPaymentCodeNode.publicKey;
             const s = getSharedSecret(B, a);
             const sGUint = ecc.pointMultiply(G, s, true);
             if (sGUint === null)
-                throw new Error("Could not compute sG");
+                throw new Error('Could not compute sG');
             const sG = uintArrayToBuffer(sGUint);
             const BPrimeUint = ecc.pointAdd(B, sG, true);
             if (BPrimeUint === null)
-                throw new Error("Could not calculate pubkey");
+                throw new Error('Could not calculate pubkey');
             const BPrime = uintArrayToBuffer(BPrimeUint);
             if (!ecc.isPoint(BPrime))
-                throw new Error("Calculate Pubkey is invalid");
+                throw new Error('Calculate Pubkey is invalid');
             const node = bip32.fromPublicKey(BPrime, bobPaymentCodeNode.chainCode, this.network.network);
             return this.getAddressFromNode(node);
         }
@@ -117,7 +117,7 @@ function BIP47Factory(ecc) {
             const first = tx.ins[0];
             const hash = first.hash;
             const index = first.index;
-            const indexHex = index.toString(16).padStart(8, '0');
+            const indexHex = this.getInternalByteOrderHex(index);
             const outpoint = Buffer.from(hash.toString('hex') + indexHex, 'hex');
             let pubKey = null;
             if (first.witness.length)
@@ -131,15 +131,22 @@ function BIP47Factory(ecc) {
                 pubKey,
             };
         }
+        getInternalByteOrderHex(index) {
+            const tmpIndex = index.toString(16).padStart(8, '0');
+            const indexBuffer = toInternalByteOrder(Buffer.from(tmpIndex, 'hex'));
+            const indexHex = indexBuffer.toString('hex');
+            return indexHex;
+        }
         getPaymentCodeFromRawNotificationTransaction(rawHexNotificationData) {
             const tx = bitcoin.Transaction.fromHex(rawHexNotificationData);
-            const { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
+            // tslint:disable-next-line:prefer-const
+            let { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
             const A = pubKey;
             const b = this.getNotificationNode().privateKey;
             const S = uintArrayToBuffer(ecc.pointMultiply(A, b));
             const x = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
             const s = crypto.hmacSHA512(outpoint, x);
-            const opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
+            const opReturnOutput = tx.outs.find(o => o.script.toString('hex').startsWith('6a4c50'));
             if (!opReturnOutput)
                 throw new Error('No OP_RETURN output in notification');
             const binaryPaymentCode = opReturnOutput.script.slice(3);
