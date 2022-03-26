@@ -130,5 +130,6 @@ describe('Notification Transaction and blinded payment code exchange', () => {
     );
 
     expect(p).to.equal(alice.paymentCode);
-  });
+  })
+
 });

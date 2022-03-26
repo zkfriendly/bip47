@@ -1,11 +1,3 @@
-# BIP-47 Reusable Payment Codes
-
-A [BIP47](https://github.com/bitcoin/bips/blob/master/bip-0047.mediawiki) compatible library written in TypeScript with transpiled JavaScript committed to git.
-
-## Examples
-typescript
-
-```typescript
 import ECPairFactory from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 import BIP47Factory from '.';
@@ -43,27 +35,3 @@ const privateKey = wallet.privateKey?.toString('hex');
 // examples of how to generate blinded payment code
 // and retrieving payment code from notification transaction
 // can be found in tests
-
-```
-
-see tests for more examples.
-
-
-## Supported Functionality
-- generate payment code from seed phrase or seed hex
-- generate payment addresses
-- generate notification address from payment code
-- generate receiving addresses/privateKeys for a payment code
-- generate blinded payment code for notification transaction
-- retrieve payment code from raw notification transaction
-
-
-## Reference
-[BIP-47](https://github.com/bitcoin/bips/blob/master/bip-0047.mediawiki)
-
-[BIP-47 Test Vectors](https://gist.github.com/SamouraiDev/6aad669604c5930864bd)
-
-## Donations
-We appreciate your donations if you found this repository useful :)
-
-[paynym.is/+frostydarkness08a](https://paynym.is/+frostydarkness08a)
