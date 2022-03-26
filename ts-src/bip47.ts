@@ -62,9 +62,9 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const prvKeyUint8: Uint8Array | null = ecc.privateAdd(alicePrivateNode.privateKey, s);
 
       if (prvKeyUint8 === null)
-        throw new Error("Could not calculate private key")
+        throw new Error('Could not calculate private key')
 
-      let prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
+      const prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
       return bip32.fromPrivateKey(
         prvKey,
         bobsFirstPaymentCodeNode.chainCode,
@@ -88,7 +88,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
         bobsRootPaymentCodeNode.derive(index);
 
       if (firstAlicePaymentCodeNode.privateKey === undefined)
-        throw new Error("Missing private key to generate payment address")
+        throw new Error('Missing private key to generate payment address')
 
       const a: Buffer = firstAlicePaymentCodeNode.privateKey;
       const B: Buffer = bobPaymentCodeNode.publicKey;
@@ -96,18 +96,18 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const sGUint: Uint8Array | null = ecc.pointMultiply(G, s, true);
 
       if (sGUint === null)
-        throw new Error("Could not compute sG")
+        throw new Error('Could not compute sG')
 
       const sG: Buffer = uintArrayToBuffer(sGUint);
       const BPrimeUint: Uint8Array | null = ecc.pointAdd(B, sG, true);
 
       if (BPrimeUint === null)
-        throw new Error("Could not calculate pubkey");
+        throw new Error('Could not calculate pubkey');
 
       const BPrime: Buffer = uintArrayToBuffer(BPrimeUint);
 
       if (!ecc.isPoint(BPrime))
-        throw new Error("Calculate Pubkey is invalid");
+        throw new Error('Calculate Pubkey is invalid');
 
       const node: BIP32Interface = bip32.fromPublicKey(
         BPrime,
@@ -240,7 +240,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const x: Buffer = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
       const s = crypto.hmacSHA512(outpoint, x);
 
-      const opReturnOutput = tx.outs.find((o) =>
+      const opReturnOutput = tx.outs.find(o =>
         o.script.toString('hex').startsWith('6a4c50'),
       );
 
