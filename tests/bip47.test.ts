@@ -48,16 +48,16 @@ const aliceToBobAddresses = [
 ];
 
 const privateKeysAliceToBobWallets = [
-  '04448fd1be0c9c13a5ca0b530e464b619dc091b299b98c5cab9978b32b4a1b8b',
-  '6bfa917e4c44349bfdf46346d389bf73a18cec6bc544ce9f337e14721f06107b',
-  '46d32fbee043d8ee176fe85a18da92557ee00b189b533fce2340e4745c4b7b8c',
-  '4d3037cfd9479a082d3d56605c71cbf8f38dc088ba9f7a353951317c35e6c343',
-  '97b94a9d173044b23b32f5ab64d905264622ecd3eafbe74ef986b45ff273bbba',
-  'ce67e97abf4772d88385e66d9bf530ee66e07172d40219c62ee721ff1a0dca01',
-  'ef049794ed2eef833d5466b3be6fe7676512aa302afcde0f88d6fcfe8c32cc09',
-  'd3ea8f780bed7ef2cd0e38c5d943639663236247c0a77c2c16d374e5a202455b',
-  'efb86ca2a3bad69558c2f7c2a1e2d7008bf7511acad5c2cbf909b851eb77e8f3',
-  '18bcf19b0b4148e59e2bba63414d7a8ead135a7c2f500ae7811125fb6f7ce941',
+  'd687f6b820e6e3d47296b01f3b73ccdc930eded39d559921a7dd8ed81b2c8f82',
+  'c7a376a4ddc5ca6ecc3822fd06f6c5009911e71ce38e9b1e52bd2aaf735fd505',
+  '72ab5f58870e5b24e13c1bedf674e2419bdba319bedeccf5eb4851050fc6feed',
+  'e865507797c5f0b8c1b4ade024b2520100a5be8188a0596a34636773d4cd279e',
+  '34771c63469338453ed71a5099ed6807386c37d63bfdebdef69658ce71461231',
+  '66a2b5d7fd1b89141caf1ee050ff502d61c793e9d2bd28e773771a608408aa5b',
+  'f103fe818377ff6040eb9aac10677384bb1ca6ff7f9d33e5a6306c3e402daec9',
+  '5bd0be3fa5ae87ea97301b1e637915478efb45afcfe64133954eae93a29553a0',
+  '0c4d3825253bc7a28a83097cfaf8affd9924d9a9ac921dbb9ce20a684253d349',
+  '118951327db87b267c2ed385631cda9c2905078cff8e63a053dc586d624c7899'
 ];
 
 describe('Payment codes and notification addresses', () => {
@@ -102,9 +102,9 @@ describe('Payment Addresses and Private keys', () => {
         alicePaymentNode,
         i,
       );
-      expect(
-        privateKeysAliceToBobWallets[i] === wallet.privateKey?.toString('hex'),
-      );
+      expect(bobBip47.getAddressFromNode(wallet, bobBip47.network)).to.equal(aliceToBobAddresses[i])
+      // check private key
+      expect(wallet.privateKey?.toString('hex')).to.equal(privateKeysAliceToBobWallets[i]);
     }
   });
 });
