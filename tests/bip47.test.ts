@@ -129,6 +129,6 @@ describe('Notification Transaction and blinded payment code exchange', () => {
       aliceToBobRawNotificationHex,
     );
 
-    // expect(p).to.equal(alice.paymentCode);
+    expect(p).to.equal(alice.paymentCode);
   });
 });

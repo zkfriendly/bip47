@@ -6,7 +6,6 @@ import { xor } from './xor';
 import { BIP47API, BIP47Interface, NetworkCoin, PublicKeyOutpoint, TinySecp256k1Interface } from './interfaces';
 import { mainnetData } from './networks';
 import getUtils from './utils';
-
 const bs58check = require('bs58check');
 
 export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
@@ -24,6 +23,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
     getRootPaymentCodeNodeFromBIP39Seed,
     uintArrayToBuffer,
     getSharedSecret,
+    toInternalByteOrder
   } = getUtils(ecc, bip32);
 
   class BIP47 implements BIP47Interface {
@@ -200,8 +200,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const first: bitcoin.TxInput = tx.ins[0];
       const hash: Buffer = first.hash;
       const index: number = first.index;
-
-      const indexHex = index.toString(16).padStart(8, '0');
+      const indexHex = this.getInternalByteOrderHex(index);
       const outpoint = Buffer.from(hash.toString('hex') + indexHex, 'hex');
 
       let pubKey: Buffer | null = null;
@@ -220,13 +219,22 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       };
     }
 
+    private getInternalByteOrderHex(index: number) {
+      const tmpIndex = index.toString(16).padStart(8, '0');
+      const indexBuffer = toInternalByteOrder(Buffer.from(tmpIndex, 'hex'));
+      const indexHex = indexBuffer.toString('hex');
+      return indexHex;
+    }
+
     getPaymentCodeFromRawNotificationTransaction(
       rawHexNotificationData: string,
     ) {
       const tx: bitcoin.Transaction = bitcoin.Transaction.fromHex(
         rawHexNotificationData,
       );
-      const { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
+      // tslint:disable-next-line:prefer-const
+      let { pubKey, outpoint } = this.getFirstExposedPubKeyAndOutpoint(tx);
+
       const A: Buffer = pubKey;
       const b: Buffer = this.getNotificationNode().privateKey as Buffer;
       const S: Buffer = uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
