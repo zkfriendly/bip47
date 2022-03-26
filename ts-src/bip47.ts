@@ -48,7 +48,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
         throw new Error('Root Payment code node or network not set');
 
       const alicePrivateNode: BIP32Interface =
-        this.RootPaymentCodeNode.deriveHardened(index);
+        this.RootPaymentCodeNode.derive(index);
 
       if (alicePrivateNode.privateKey === undefined)
         throw new Error('Missing private key to generate payment wallets')
@@ -83,7 +83,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       if (!this.network || !this.RootPaymentCodeNode)
         throw new Error('Root Payment code or network not set');
       const firstAlicePaymentCodeNode: BIP32Interface =
-        this.RootPaymentCodeNode.deriveHardened(0);
+        this.RootPaymentCodeNode.derive(0);
       const bobPaymentCodeNode: BIP32Interface =
         bobsRootPaymentCodeNode.derive(index);
 

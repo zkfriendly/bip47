@@ -63,23 +63,23 @@ const privateKeysAliceToBobWallets = [
 describe('Payment codes and notification addresses', () => {
   it('Should create payment code from seed phrase', () => {
     const bip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
-    expect(bip47.getSerializedPaymentCode() === alice.paymentCode);
+    expect(bip47.getSerializedPaymentCode()).to.equal(alice.paymentCode);
   });
   it('Should create payment code from seed hex', () => {
     const bip47 = BIP47Factory(ecc).fromSeedHex(alice.seedHex);
-    expect(bip47.getSerializedPaymentCode() === alice.paymentCode);
+    expect(bip47.getSerializedPaymentCode()).to.equal(alice.paymentCode);
   });
   it('should create Bip47 util object from base58 payment code', () => {
     const bip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
-    expect(bip47.getSerializedPaymentCode() === bob.paymentCode);
+    expect(bip47.getSerializedPaymentCode()).to.equal(bob.paymentCode);
   });
   it('should get notification address from seed phrase or seed)', () => {
     const bip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
-    expect(bip47.getNotificationAddress() === alice.notificationAddress);
+    expect(bip47.getNotificationAddress()).to.equal(alice.notificationAddress);
   });
   it('should get notification address from payment code', () => {
     const bip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
-    expect(bip47.getNotificationAddress() === bob.notificationAddress);
+    expect(bip47.getNotificationAddress()).to.equal(bob.notificationAddress);
   });
 });
 
@@ -120,8 +120,7 @@ describe('Notification Transaction and blinded payment code exchange', () => {
       keyPair.privateKey as Buffer,
       alice.outpoint,
     );
-
-    expect(blindedPaymentCode === alice.blindedPaymentCode);
+    expect(blindedPaymentCode).to.equal(alice.blindedPaymentCode);
   });
 
   it("Bob should be able to retrieve Alice's payment code, from Alice's notification transaction", () => {
@@ -130,6 +129,6 @@ describe('Notification Transaction and blinded payment code exchange', () => {
       aliceToBobRawNotificationHex,
     );
 
-    expect(p === alice.paymentCode);
+    expect(p).to.equal(alice.paymentCode);
   });
 });
