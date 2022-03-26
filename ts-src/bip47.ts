@@ -2,13 +2,8 @@ import BIP32Factory, { BIP32API, BIP32Interface } from 'bip32';
 import * as bitcoin from 'bitcoinjs-lib';
 import * as crypto from './crypto';
 import { xor } from './xor';
-import {
-  BIP47API,
-  BIP47Interface,
-  NetworkCoin,
-  PublicKeyOutpoint,
-  TinySecp256k1Interface,
-} from './interfaces';
+
+import { BIP47API, BIP47Interface, NetworkCoin, PublicKeyOutpoint, TinySecp256k1Interface } from './interfaces';
 import { mainnetData } from './networks';
 import getUtils from './utils';
 
@@ -41,25 +36,23 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
     }
 
     getPaymentWallet(
-      bobsRootPaymentCodeNode: BIP32Interface,
+      aliceNode: BIP32Interface,
       index: number,
     ): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
         throw new Error('Root Payment code node or network not set');
 
-      const alicePrivateNode: BIP32Interface =
-        this.RootPaymentCodeNode.derive(index);
+      const bobNode: BIP32Interface = this.RootPaymentCodeNode.derive(index);
 
-      if (alicePrivateNode.privateKey === undefined)
+      if (bobNode.privateKey === undefined)
         throw new Error('Missing private key to generate payment wallets')
 
-      const bobsFirstPaymentCodeNode: BIP32Interface =
-        bobsRootPaymentCodeNode.derive(0);
+      const firstAliceNode: BIP32Interface = aliceNode.derive(0);
       const s: Buffer = getSharedSecret(
-        bobsFirstPaymentCodeNode.publicKey,
-        alicePrivateNode.privateKey,
+        firstAliceNode.publicKey,
+        bobNode.privateKey,
       );
-      const prvKeyUint8: Uint8Array | null = ecc.privateAdd(alicePrivateNode.privateKey, s);
+      const prvKeyUint8: Uint8Array | null = ecc.privateAdd(bobNode.privateKey, s);
 
       if (prvKeyUint8 === null)
         throw new Error('Could not calculate private key')
@@ -67,7 +60,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
       return bip32.fromPrivateKey(
         prvKey,
-        bobsFirstPaymentCodeNode.chainCode,
+        bobNode.chainCode,
         this.network.network,
       );
     }
