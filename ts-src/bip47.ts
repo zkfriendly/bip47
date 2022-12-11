@@ -3,7 +3,13 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as crypto from './crypto';
 import { xor } from './xor';
 
-import { BIP47API, BIP47Interface, NetworkCoin, PublicKeyOutpoint, TinySecp256k1Interface } from './interfaces';
+import {
+  BIP47API,
+  BIP47Interface,
+  NetworkCoin,
+  PublicKeyOutpoint,
+  TinySecp256k1Interface,
+} from './interfaces';
 import { mainnetData } from './networks';
 import getUtils from './utils';
 const bs58check = require('bs58check');
@@ -23,7 +29,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
     getRootPaymentCodeNodeFromBIP39Seed,
     uintArrayToBuffer,
     getSharedSecret,
-    toInternalByteOrder
+    toInternalByteOrder,
   } = getUtils(ecc, bip32);
 
   class BIP47 implements BIP47Interface {
@@ -35,27 +41,27 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       this.RootPaymentCodeNode = RootPaymentCodeNode;
     }
 
-    getPaymentWallet(
-      aliceNode: BIP32Interface,
-      index: number,
-    ): BIP32Interface {
+    getPaymentWallet(aliceNode: BIP32Interface, index: number): BIP32Interface {
       if (!this.network || !this.RootPaymentCodeNode)
         throw new Error('Root Payment code node or network not set');
 
       const bobNode: BIP32Interface = this.RootPaymentCodeNode.derive(index);
 
       if (bobNode.privateKey === undefined)
-        throw new Error('Missing private key to generate payment wallets')
+        throw new Error('Missing private key to generate payment wallets');
 
       const firstAliceNode: BIP32Interface = aliceNode.derive(0);
       const s: Buffer = getSharedSecret(
         firstAliceNode.publicKey,
         bobNode.privateKey,
       );
-      const prvKeyUint8: Uint8Array | null = ecc.privateAdd(bobNode.privateKey, s);
+      const prvKeyUint8: Uint8Array | null = ecc.privateAdd(
+        bobNode.privateKey,
+        s,
+      );
 
       if (prvKeyUint8 === null)
-        throw new Error('Could not calculate private key')
+        throw new Error('Could not calculate private key');
 
       const prvKey: Buffer = uintArrayToBuffer(prvKeyUint8);
       return bip32.fromPrivateKey(
@@ -81,26 +87,23 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
         bobsRootPaymentCodeNode.derive(index);
 
       if (firstAlicePaymentCodeNode.privateKey === undefined)
-        throw new Error('Missing private key to generate payment address')
+        throw new Error('Missing private key to generate payment address');
 
       const a: Buffer = firstAlicePaymentCodeNode.privateKey;
       const B: Buffer = bobPaymentCodeNode.publicKey;
       const s = getSharedSecret(B, a);
       const sGUint: Uint8Array | null = ecc.pointMultiply(G, s, true);
 
-      if (sGUint === null)
-        throw new Error('Could not compute sG')
+      if (sGUint === null) throw new Error('Could not compute sG');
 
       const sG: Buffer = uintArrayToBuffer(sGUint);
       const BPrimeUint: Uint8Array | null = ecc.pointAdd(B, sG, true);
 
-      if (BPrimeUint === null)
-        throw new Error('Could not calculate pubkey');
+      if (BPrimeUint === null) throw new Error('Could not calculate pubkey');
 
       const BPrime: Buffer = uintArrayToBuffer(BPrimeUint);
 
-      if (!ecc.isPoint(BPrime))
-        throw new Error('Calculate Pubkey is invalid');
+      if (!ecc.isPoint(BPrime)) throw new Error('Calculate Pubkey is invalid');
 
       const node: BIP32Interface = bip32.fromPublicKey(
         BPrime,
@@ -175,7 +178,7 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const B: Buffer = bobBIP47.getNotificationNode().publicKey;
       const S: Buffer = uintArrayToBuffer(ecc.pointMultiply(B, a) as Buffer);
 
-      const x: Buffer = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S) as Buffer);
+      const x: Buffer = uintArrayToBuffer(S.slice(1, 33));
       const o: Buffer = outpoint;
       const s = crypto.hmacSHA512(o, x);
 
@@ -238,14 +241,15 @@ export function BIP47Factory(ecc: TinySecp256k1Interface): BIP47API {
       const A: Buffer = pubKey;
       const b: Buffer = this.getNotificationNode().privateKey as Buffer;
       const S: Buffer = uintArrayToBuffer(ecc.pointMultiply(A, b) as Buffer);
-      const x: Buffer = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+      const x: Buffer = uintArrayToBuffer(S.slice(1, 33));
       const s = crypto.hmacSHA512(outpoint, x);
 
-      const opReturnOutput = tx.outs.find(o =>
+      const opReturnOutput = tx.outs.find((o) =>
         o.script.toString('hex').startsWith('6a4c50'),
       );
 
-      if (!opReturnOutput) throw new Error('No OP_RETURN output in notification');
+      if (!opReturnOutput)
+        throw new Error('No OP_RETURN output in notification');
 
       const binaryPaymentCode: Buffer = opReturnOutput.script.slice(3);
 

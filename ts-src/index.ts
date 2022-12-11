@@ -1,5 +1,5 @@
 export { BIP47Factory as default, BIP47Factory } from './bip47';
-export {
+export type {
   NetworkCoin,
   TinySecp256k1Interface,
   BIP47Interface,

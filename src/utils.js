@@ -26,7 +26,7 @@ function getUtils(ecc, bip32) {
         return b;
     };
     const getSharedSecret = (B, a) => {
-        const S = uintArrayToBuffer(ecc.xOnlyPointFromPoint(ecc.pointMultiply(B, a, true)));
+        const S = uintArrayToBuffer(ecc.pointMultiply(B, a, true).slice(1, 33));
         let s = bitcoin.crypto.sha256(S);
         if (!ecc.isPrivate(s))
             throw new Error('Shared secret is not a valid private key');

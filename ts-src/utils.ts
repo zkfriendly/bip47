@@ -47,13 +47,12 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
 
   const getSharedSecret = (B: Buffer, a: Buffer): Buffer => {
     const S: Buffer = uintArrayToBuffer(
-      ecc.xOnlyPointFromPoint(
-        ecc.pointMultiply(B, a, true) as Buffer
-      ))
+      (ecc.pointMultiply(B, a, true) as Buffer).slice(1, 33),
+    );
 
     let s: Buffer = bitcoin.crypto.sha256(S);
     if (!ecc.isPrivate(s))
-      throw new Error('Shared secret is not a valid private key')
+      throw new Error('Shared secret is not a valid private key');
 
     return s;
   };
@@ -62,7 +61,7 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
     let start = 0;
     let length = data.length;
 
-    while(length - start >= 1) {
+    while (length - start >= 1) {
       const tmp = data[start];
       const lastIndex = length - 1;
       data[start] = data[lastIndex];
@@ -71,8 +70,7 @@ export default function getUtils(ecc: TinySecp256k1Interface, bip32: BIP32API) {
       start++;
     }
     return data;
-
-  }
+  };
   return {
     getPublicPaymentCodeNodeFromBase58,
     getRootPaymentCodeNodeFromSeedHex,

@@ -12,7 +12,7 @@ function BIP47Factory(ecc) {
     // TODO: implement a test assertion function for ecc
     const bip32 = (0, bip32_1.default)(ecc);
     const G = Buffer.from('0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 'hex');
-    const { getPublicPaymentCodeNodeFromBase58, getRootPaymentCodeNodeFromSeedHex, getRootPaymentCodeNodeFromBIP39Seed, uintArrayToBuffer, getSharedSecret, toInternalByteOrder } = (0, utils_1.default)(ecc, bip32);
+    const { getPublicPaymentCodeNodeFromBase58, getRootPaymentCodeNodeFromSeedHex, getRootPaymentCodeNodeFromBIP39Seed, uintArrayToBuffer, getSharedSecret, toInternalByteOrder, } = (0, utils_1.default)(ecc, bip32);
     class BIP47 {
         constructor(network, RootPaymentCodeNode) {
             this.network = network;
@@ -105,7 +105,7 @@ function BIP47Factory(ecc) {
             const a = privateKey;
             const B = bobBIP47.getNotificationNode().publicKey;
             const S = uintArrayToBuffer(ecc.pointMultiply(B, a));
-            const x = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+            const x = uintArrayToBuffer(S.slice(1, 33));
             const o = outpoint;
             const s = crypto.hmacSHA512(o, x);
             const binaryPaymentCode = this.getBinaryPaymentCode();
@@ -144,9 +144,9 @@ function BIP47Factory(ecc) {
             const A = pubKey;
             const b = this.getNotificationNode().privateKey;
             const S = uintArrayToBuffer(ecc.pointMultiply(A, b));
-            const x = uintArrayToBuffer(ecc.xOnlyPointFromPoint(S));
+            const x = uintArrayToBuffer(S.slice(1, 33));
             const s = crypto.hmacSHA512(outpoint, x);
-            const opReturnOutput = tx.outs.find(o => o.script.toString('hex').startsWith('6a4c50'));
+            const opReturnOutput = tx.outs.find((o) => o.script.toString('hex').startsWith('6a4c50'));
             if (!opReturnOutput)
                 throw new Error('No OP_RETURN output in notification');
             const binaryPaymentCode = opReturnOutput.script.slice(3);

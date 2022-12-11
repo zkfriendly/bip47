@@ -30,8 +30,6 @@ export interface TinySecp256k1Interface extends TinySecp256k1InterfaceBIP32 {
     pB: Uint8Array,
     compressed?: boolean,
   ): Uint8Array | null;
-
-  xOnlyPointFromPoint(p: Uint8Array): Uint8Array;
 }
 
 export interface BIP47Interface {
