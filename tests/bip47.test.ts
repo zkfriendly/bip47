@@ -1,8 +1,8 @@
 import { BIP32Interface } from 'bip32';
 import { expect } from 'chai';
 import ECPairFactory from 'ecpair';
-import * as ecc from 'tiny-secp256k1';
 import BIP47Factory from '../ts-src';
+const ecc = require('tiny-secp256k1');
 
 const ECPair = ECPairFactory(ecc);
 
@@ -57,7 +57,7 @@ const privateKeysAliceToBobWallets = [
   'f103fe818377ff6040eb9aac10677384bb1ca6ff7f9d33e5a6306c3e402daec9',
   '5bd0be3fa5ae87ea97301b1e637915478efb45afcfe64133954eae93a29553a0',
   '0c4d3825253bc7a28a83097cfaf8affd9924d9a9ac921dbb9ce20a684253d349',
-  '118951327db87b267c2ed385631cda9c2905078cff8e63a053dc586d624c7899'
+  '118951327db87b267c2ed385631cda9c2905078cff8e63a053dc586d624c7899',
 ];
 
 describe('Payment codes and notification addresses', () => {
@@ -84,15 +84,17 @@ describe('Payment codes and notification addresses', () => {
 });
 
 describe('Payment Addresses and Private keys', () => {
-  it('should generate alice to bob payment addresses from Alice\'s node', () => {
+  it("should generate alice to bob payment addresses from Alice's node", () => {
     const aliceBip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
     const bobBip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     const bobPaymentCodeNode: BIP32Interface = bobBip47.getPaymentCodeNode();
 
     for (let i = 0; i < aliceToBobAddresses.length; i++)
-      expect(aliceBip47.getPaymentAddress(bobPaymentCodeNode, i)).to.equal(aliceToBobAddresses[i]);
+      expect(aliceBip47.getPaymentAddress(bobPaymentCodeNode, i)).to.equal(
+        aliceToBobAddresses[i],
+      );
   });
-  it('Should generate alice to bob payment addresses and private keys from Bob\'s node', () => {
+  it("Should generate alice to bob payment addresses and private keys from Bob's node", () => {
     const bobBip47 = BIP47Factory(ecc).fromBip39Seed(bob.seedPhrase);
     const aliceBip47 = BIP47Factory(ecc).fromPaymentCode(alice.paymentCode);
     const alicePaymentNode: BIP32Interface = aliceBip47.getPaymentCodeNode();
@@ -102,15 +104,19 @@ describe('Payment Addresses and Private keys', () => {
         alicePaymentNode,
         i,
       );
-      expect(bobBip47.getAddressFromNode(wallet, bobBip47.network)).to.equal(aliceToBobAddresses[i])
+      expect(bobBip47.getAddressFromNode(wallet, bobBip47.network)).to.equal(
+        aliceToBobAddresses[i],
+      );
       // check private key
-      expect(wallet.privateKey?.toString('hex')).to.equal(privateKeysAliceToBobWallets[i]);
+      expect(wallet.privateKey?.toString('hex')).to.equal(
+        privateKeysAliceToBobWallets[i],
+      );
     }
   });
 });
 
 describe('Notification Transaction and blinded payment code exchange', () => {
-  it('should generate Alice\'s blinded payment code for Bob', () => {
+  it("should generate Alice's blinded payment code for Bob", () => {
     const aliceBip47 = BIP47Factory(ecc).fromBip39Seed(alice.seedPhrase);
     const bobBip47 = BIP47Factory(ecc).fromPaymentCode(bob.paymentCode);
     const keyPair = ECPair.fromWIF(alice.privateKeyWIF);
@@ -123,13 +129,12 @@ describe('Notification Transaction and blinded payment code exchange', () => {
     expect(blindedPaymentCode).to.equal(alice.blindedPaymentCode);
   });
 
-  it('Bob should be able to retrieve Alice\'s payment code, from Alice\'s notification transaction', () => {
+  it("Bob should be able to retrieve Alice's payment code, from Alice's notification transaction", () => {
     const bobBip47 = BIP47Factory(ecc).fromBip39Seed(bob.seedPhrase);
     const p = bobBip47.getPaymentCodeFromRawNotificationTransaction(
       aliceToBobRawNotificationHex,
     );
 
     expect(p).to.equal(alice.paymentCode);
-  })
-
+  });
 });

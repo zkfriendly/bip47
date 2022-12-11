@@ -40,7 +40,7 @@
     "bs58check": "^2.1.1",
     "create-hmac": "^1.1.7",
     "ecpair": "^2.0.1",
-    "tiny-secp256k1": "^2.2.1"
+    "tiny-secp256k1": "^1.1.6"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",

@@ -15,7 +15,6 @@ export interface TinySecp256k1Interface extends TinySecp256k1InterfaceBIP32 {
     privateAdd(d: Uint8Array, tweak: Uint8Array): Uint8Array | null;
     pointMultiply(p: Uint8Array, tweak: Uint8Array, compressed?: boolean): Uint8Array | null;
     pointAdd(pA: Uint8Array, pB: Uint8Array, compressed?: boolean): Uint8Array | null;
-    xOnlyPointFromPoint(p: Uint8Array): Uint8Array;
 }
 export interface BIP47Interface {
     network: NetworkCoin;
