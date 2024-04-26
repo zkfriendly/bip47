@@ -32,6 +32,23 @@ function BIP47Factory(ecc) {
             const prvKey = uintArrayToBuffer(prvKeyUint8);
             return bip32.fromPrivateKey(prvKey, bobNode.chainCode, this.network.network);
         }
+        getReceiveWallet(bobNode, index) {
+            if (!this.network || !this.RootPaymentCodeNode)
+                throw new Error('Root Payment code node or network not set');
+            const aliceNode = this.RootPaymentCodeNode.derive(0);
+            bobNode = bobNode.derive(index);
+            if (aliceNode.privateKey === undefined)
+                throw new Error('Missing private key to generate receive wallets');
+            const s = getSharedSecret(bobNode.publicKey, aliceNode.privateKey);
+            const sG = ecc.pointMultiply(G, s, true);
+            if (sG === null)
+                throw new Error('Could not calculate private key');
+            const pubKeyUint8 = ecc.pointAdd(bobNode.publicKey, sG);
+            if (pubKeyUint8 === null)
+                throw new Error('Could not sum pub keys');
+            const pubKey = uintArrayToBuffer(pubKeyUint8);
+            return bip32.fromPublicKey(pubKey, bobNode.chainCode, this.network.network);
+        }
         getPaymentCodeNode() {
             return this.RootPaymentCodeNode;
         }

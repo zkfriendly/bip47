@@ -41,6 +41,11 @@ export interface BIP47Interface {
     index: number,
   ): BIP32Interface;
 
+  getReceiveWallet(
+    bobsRootPaymentCodeNode: BIP32Interface,
+    index: number,
+  ): BIP32Interface;
+
   getPaymentCodeNode(): BIP32Interface;
 
   getPaymentAddress(
