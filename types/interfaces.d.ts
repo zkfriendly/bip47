@@ -20,6 +20,7 @@ export interface BIP47Interface {
     network: NetworkCoin;
     RootPaymentCodeNode: BIP32Interface;
     getPaymentWallet(bobsRootPaymentCodeNode: BIP32Interface, index: number): BIP32Interface;
+    getReceiveWallet(bobsRootPaymentCodeNode: BIP32Interface, index: number): BIP32Interface;
     getPaymentCodeNode(): BIP32Interface;
     getPaymentAddress(bobsRootPaymentCodeNode: BIP32Interface, index: number): string;
     getSerializedPaymentCode(): string;
