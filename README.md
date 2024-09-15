@@ -65,5 +65,4 @@ see tests for more examples.
 
 ## Donations
 We appreciate your donations if you found this repository useful :)
-
-[paynym.is/+frostydarkness08a](https://paynym.is/+frostydarkness08a)
+`bc1qujem059ce55c2uwusrtv97e26ulmz43w3cz6gn`
