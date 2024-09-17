@@ -65,4 +65,5 @@ see tests for more examples.
 
 ## Donations
 We appreciate your donations if you found this repository useful :)
-`bc1qujem059ce55c2uwusrtv97e26ulmz43w3cz6gn`
+- btc: `bc1qujem059ce55c2uwusrtv97e26ulmz43w3cz6gn`
+- payment code: `PM8TJLSPLroADRS1hJafJEUmRvuXZpE2YmRrfHT1LrYmQW6t4ZxtP73sjh5qUmxMMrpsioFHxaHFpGgkHz5Ubidyzc1orYjcAWYzdA71RVZshdytY67m`
